@@ -532,6 +532,11 @@
           "revokeLinkShares": "Revoke link shares you created"
         }
       },
+      "accessLossConfirm": {
+        "header": "Some users will lose access",
+        "text": "After this move, some users can no longer see this project or projects under it. They created {webhooks} webhooks and {linkShares} link shares there.",
+        "cleanupText": "Their access ends with the move, and they will also lose:"
+      },
       "permission": {
         "title": "Permission",
         "read": "Read only",
@@ -1611,6 +1616,7 @@
     "3008": "The project is archived and can therefore only be accessed read only. This is also true for all tasks associated with this project.",
     "3016": "The parent project is archived. Un-archive the parent project first.",
     "3017": "The default project must be a project you can write to.",
+    "3018": "Users would lose access to projects holding {webhooks} webhooks and {link_shares} link shares they created.",
     "3020": "This project hierarchy is too large to be moved below the chosen parent project.",
     "4001": "The task title cannot be empty.",
     "4002": "The task does not exist.",
