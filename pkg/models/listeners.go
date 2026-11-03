@@ -1576,7 +1576,7 @@ func projectWebhooksForEvent(s *xorm.Session, projectID int64, eventName string)
 		}
 		// project.deleted fires after the row is gone; nothing left to check against.
 		if project != nil {
-			// Backstop for access lost without an explicit removal, e.g. by moving the project.
+			// Backstop for access lost through a path that skipped the cleanup.
 			canRead, _, err := project.CanRead(s, &user.User{ID: w.CreatedByID})
 			if err != nil {
 				return nil, err
