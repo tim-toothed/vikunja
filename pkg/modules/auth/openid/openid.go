@@ -255,7 +255,7 @@ func AuthenticateCallback(ctx context.Context, cb *Callback, providerKey string)
 	defer events.CleanupPending(s)
 
 	// Check if we have seen this user before
-	u, err := getOrCreateUser(s, cl, provider, idToken)
+	u, _, err := getOrCreateUser(s, cl, provider, idToken)
 	if err != nil {
 		_ = s.Rollback()
 		log.Errorf("Error creating new user for provider %s: %v", provider.Name, err)
@@ -445,7 +445,7 @@ func fallbackSearchUsers(cl *claims, provider *Provider, idToken *oidc.IDToken) 
 	return searches
 }
 
-func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *oidc.IDToken) (u *user.User, err error) {
+func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *oidc.IDToken) (u *user.User, linked bool, err error) {
 
 	// set defaults
 	fallbackMatchFound := false
@@ -458,14 +458,14 @@ func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *o
 		Subject: idToken.Subject,
 	})
 	if err != nil && !user.IsErrUserDoesNotExist(err) && !user.IsErrUserStatusError(err) {
-		return nil, err
+		return nil, false, err
 	}
 	alreadyCreatedFromIssuer = err == nil || user.IsErrUserStatusError(err)
 
 	// If the user exists but is disabled/locked, return early — don't update their profile or sync avatar.
 	// HandleCallback will reject the auth attempt.
 	if alreadyCreatedFromIssuer && user.IsErrUserStatusError(err) {
-		return u, nil
+		return u, false, nil
 	}
 
 	if !alreadyCreatedFromIssuer && (provider.EmailFallback || provider.UsernameFallback) {
@@ -474,13 +474,13 @@ func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *o
 		for _, searchUser := range fallbackSearchUsers(cl, provider, idToken) {
 			u, err = user.GetUserWithEmail(s, searchUser)
 			if err != nil && !user.IsErrUserDoesNotExist(err) && !user.IsErrUserStatusError(err) {
-				return nil, err
+				return nil, false, err
 			}
 			fallbackMatchFound = err == nil || user.IsErrUserStatusError(err)
 
 			// Same as above: disabled/locked user found via fallback — return early.
 			if fallbackMatchFound && user.IsErrUserStatusError(err) {
-				return u, nil
+				return u, false, nil
 			}
 			if fallbackMatchFound {
 				break
@@ -489,7 +489,7 @@ func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *o
 	}
 
 	if fallbackMatchFound && u.IsBot() {
-		return nil, &user.ErrAccountIsBot{UserID: u.ID}
+		return nil, false, &user.ErrAccountIsBot{UserID: u.ID}
 	}
 
 	if !alreadyCreatedFromIssuer && !fallbackMatchFound {
@@ -507,7 +507,7 @@ func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *o
 
 		u, err = auth.CreateUserWithRandomUsername(s, uu)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	} else if alreadyCreatedFromIssuer {
 
@@ -523,7 +523,7 @@ func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *o
 
 		u, err = user.UpdateUser(s, u, false)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
@@ -534,7 +534,7 @@ func getOrCreateUser(s *xorm.Session, cl *claims, provider *Provider, idToken *o
 		}
 	}
 
-	return u, nil
+	return u, false, nil
 }
 
 // mergeClaims combines claims from token and userinfo based on the ForceUserInfo setting
