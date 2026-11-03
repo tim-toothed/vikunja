@@ -77,6 +77,11 @@ func TestI18nParamsContract(t *testing.T) {
 			expectedCode: ErrCodeInvalidAPITokenPermission,
 		},
 		{
+			name:         "ErrAccessLossNeedsConfirmation",
+			err:          &ErrAccessLossNeedsConfirmation{Webhooks: 1, LinkShares: 2},
+			expectedCode: ErrCodeAccessLossNeedsConfirmation,
+		},
+		{
 			name:         "user.ErrInvalidClaimData",
 			err:          &user.ErrInvalidClaimData{Field: "f", Type: "t"},
 			expectedCode: user.ErrCodeInvalidClaimData,
