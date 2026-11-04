@@ -41,6 +41,10 @@ func GetIdentityByIssuerAndSubject(s *xorm.Session, issuer, subject string) (ide
 	if err != nil || !found {
 		return nil, false, err
 	}
+	// utf8mb4_bin is PAD SPACE on MySQL/MariaDB and ignores trailing spaces.
+	if identity.Issuer != issuer || identity.Subject != subject {
+		return nil, false, nil
+	}
 	return identity, true, nil
 }
 

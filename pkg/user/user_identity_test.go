@@ -81,6 +81,10 @@ func TestUserIdentitySubjectIsCaseSensitive(t *testing.T) {
 	_, found, err = GetIdentityByIssuerAndSubject(s, "https://CASE.service.com", "Alice")
 	require.NoError(t, err)
 	assert.False(t, found, "issuers are compared case-sensitively too")
+
+	_, found, err = GetIdentityByIssuerAndSubject(s, issuer, "Alice ")
+	require.NoError(t, err)
+	assert.False(t, found, "trailing spaces are significant")
 }
 
 func TestGetIdentitiesByUserID(t *testing.T) {
