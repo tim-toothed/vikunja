@@ -52,7 +52,7 @@ const navigationItems = computed(() => {
 		{
 			title: t('user.settings.linkedAccounts.title'),
 			routeName: 'user.settings.linked-accounts',
-			condition: canLinkAccounts(configStore.auth.openid_connect, authStore.info),
+			condition: canLinkAccounts(configStore.auth.openid_connect, authStore.currentAccount),
 		},
 		{
 			title: t('user.export.title'),
