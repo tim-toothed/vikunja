@@ -24,6 +24,8 @@ test.describe('Linked accounts', () => {
 		await expect(page.getByText('You have not linked any accounts yet.')).toBeVisible()
 
 		await linkDexAccount(page)
+		await expect(page.getByText('test@example.com', {exact: true})).toBeVisible()
+		expect(await listIdentities(apiContext, userToken)).toHaveLength(0)
 		await page.locator('#linkIdentityPassword').fill(TEST_PASSWORD)
 		await page.getByRole('button', {name: 'Link account'}).click()
 
@@ -44,13 +46,17 @@ test.describe('Linked accounts', () => {
 	}) => {
 		await gotoUserSettings(page, 'linked-accounts')
 		await linkDexAccount(page)
+		await expect(page.getByText('test@example.com', {exact: true})).toBeVisible()
+		expect(await listIdentities(apiContext, userToken)).toHaveLength(0)
 
 		await page.locator('#linkIdentityPassword').fill('wrong password')
 		await page.getByRole('button', {name: 'Link account'}).click()
 		await expect(page.getByText('Wrong username or password.')).toBeVisible()
 		expect(await listIdentities(apiContext, userToken)).toHaveLength(0)
 
-		// The code was not exchanged yet, so the same callback can still link.
+		// Reload reuses the prepared identity even though the provider code was exchanged.
+		await page.reload()
+		await expect(page.getByText('test@example.com', {exact: true})).toBeVisible()
 		await page.locator('#linkIdentityPassword').fill(TEST_PASSWORD)
 		await page.getByRole('button', {name: 'Link account'}).click()
 		await expect(page).toHaveURL(/\/user\/settings\/linked-accounts/)

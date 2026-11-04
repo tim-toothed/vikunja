@@ -238,6 +238,7 @@
         "linkSuccess": "The account was linked successfully.",
         "unlinkSuccess": "The account was unlinked successfully.",
         "confirmTitle": "Link {provider} to your account",
+        "confirmAccount": "Account to link:",
         "confirmText": "Enter your password to link this {provider} account to your Vikunja account. You can then log in with either.",
         "confirm": "Link account",
         "noSession": "You need to be logged in to link an account. Log in with your password and start linking again from the settings.",

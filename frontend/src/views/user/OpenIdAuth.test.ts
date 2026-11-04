@@ -9,6 +9,7 @@ const {sdk, mockRoute, router, authStore, redirectIfSaved} = vi.hoisted(() => ({
 	sdk: {
 		totpGet: vi.fn(),
 		userIdentitiesLink: vi.fn(),
+		userIdentitiesPreview: vi.fn(),
 	},
 	mockRoute: {
 		params: {provider: 'dex'} as Record<string, string>,
@@ -95,6 +96,7 @@ beforeEach(() => {
 	authStore.authUser = false
 	authStore.openIdAuth.mockResolvedValue(undefined)
 	sdk.totpGet.mockResolvedValue({data: {enabled: false}})
+	sdk.userIdentitiesPreview.mockResolvedValue({data: {account: 'test@example.com'}})
 })
 
 describe('OpenIdAuth login', () => {
@@ -186,7 +188,51 @@ describe('OpenIdAuth linking', () => {
 
 		expect(authStore.openIdAuth).not.toHaveBeenCalled()
 		expect(wrapper.text()).toContain('Link Dex to your account')
+		expect(wrapper.text()).toContain('test@example.com')
 		expect(wrapper.find('#linkIdentityPasscode').exists()).toBe(false)
+	})
+
+	it('waits for the verified account before accepting a password', async () => {
+		let resolvePreview!: (value: {data: {account: string}}) => void
+		sdk.userIdentitiesPreview.mockReturnValue(new Promise(resolve => { resolvePreview = resolve }))
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.find('#linkIdentityPassword').exists()).toBe(false)
+		await wrapper.find('form').trigger('submit')
+		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
+
+		resolvePreview({data: {account: 'alice@example.com'}})
+		await flushPromises()
+		expect(wrapper.text()).toContain('alice@example.com')
+		expect(wrapper.find('#linkIdentityPassword').exists()).toBe(true)
+	})
+
+	it('ends the flow when the account cannot be previewed', async () => {
+		sdk.userIdentitiesPreview.mockRejectedValue({code: 15001, message: 'Provider unavailable'})
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.find('#linkIdentityPassword').exists()).toBe(false)
+		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.settings.linked-accounts'})
+		expect(localStorage.getItem('openidLinking')).toBeNull()
+		expect(localStorage.getItem('state')).toBeNull()
+		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
+	})
+
+	it('ignores a preview completed after cancelling', async () => {
+		let resolvePreview!: (value: {data: {account: string}}) => void
+		sdk.userIdentitiesPreview.mockReturnValue(new Promise(resolve => { resolvePreview = resolve }))
+		const wrapper = mountCallback()
+		await flushPromises()
+		await wrapper.find('x-button-stub[variant="tertiary"]').trigger('click')
+
+		resolvePreview({data: {account: 'alice@example.com'}})
+		await flushPromises()
+		expect(wrapper.find('#linkIdentityPassword').exists()).toBe(false)
+		expect(wrapper.text()).not.toContain('alice@example.com')
+		expect(localStorage.getItem('openidLinking')).toBeNull()
+		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
 	})
 
 	it('does not log in when the callback is revisited after linking', async () => {

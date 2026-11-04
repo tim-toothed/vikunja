@@ -17,7 +17,18 @@
 			<p class="mbe-4">
 				{{ $t('user.settings.linkedAccounts.confirmText', {provider: providerName}) }}
 			</p>
+			<Message v-if="!identity">
+				{{ $t('user.auth.authenticating') }}
+			</Message>
+			<p
+				v-else
+				class="mbe-4"
+			>
+				{{ $t('user.settings.linkedAccounts.confirmAccount') }}
+				<strong>{{ identity.account }}</strong>
+			</p>
 			<ReauthFields
+				v-if="identity"
 				v-model:password="password"
 				v-model:passcode="totpPasscode"
 				password-id="linkIdentityPassword"
@@ -27,6 +38,7 @@
 			/>
 			<div class="buttons mbs-4">
 				<XButton
+					v-if="identity"
 					type="submit"
 					:loading="linkMutation.isPending.value || totpPending"
 				>
@@ -54,12 +66,12 @@
 </template>
 
 <script setup lang="ts">
-import {computed, nextTick, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, onBeforeUnmount, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {useQuery} from '@tanstack/vue-query'
-import type {VikunjaErrorModel} from '@/client/generated'
-import {useLinkIdentityMutation} from '@/client/queries/identities'
+import type {IdentityPreview, VikunjaErrorModel} from '@/client/generated'
+import {useLinkIdentityMutation, usePreviewIdentityMutation} from '@/client/queries/identities'
 import {totpQuery} from '@/client/queries/totp'
 import {isRequestContextAbort} from '@/client/requestContext'
 import ReauthFields from '@/components/user/ReauthFields.vue'
@@ -94,6 +106,10 @@ const totpPasscode = ref('')
 const provider = computed(() => configStore.auth.openid_connect.providers?.find(p => p.key === props.providerKey))
 const providerName = computed(() => provider.value?.name ?? props.providerKey)
 const linkMutation = useLinkIdentityMutation()
+const previewMutation = usePreviewIdentityMutation()
+const identity = ref<IdentityPreview>()
+let active = true
+onBeforeUnmount(() => { active = false })
 const totp = useQuery(computed(() => ({
 	...totpQuery(),
 	enabled: mode.value === 'confirm' && configStore.totp_enabled,
@@ -113,7 +129,7 @@ async function focusBackButton() {
 	backButton.value?.$el.focus()
 }
 
-// Rejected before the code exchange, so the same code still works on retry.
+// Rejected before consuming the prepared identity, so the same callback can retry.
 const RETRYABLE_LINK_ERRORS = new Set([
 	ERROR_CODE_WRONG_USERNAME_OR_PASSWORD,
 	ERROR_CODE_TOTP_REQUIRED,
@@ -122,7 +138,7 @@ const RETRYABLE_LINK_ERRORS = new Set([
 ])
 
 async function linkIdentity() {
-	if (linkMutation.isPending.value || totpPending.value) return
+	if (!identity.value || linkMutation.isPending.value || totpPending.value) return
 	if (!provider.value) {
 		errorMessage.value = t('user.auth.openIdGeneralError')
 		return
@@ -153,13 +169,31 @@ async function linkIdentity() {
 }
 
 function cancelLinking() {
+	active = false
 	endLinkFlow(props.state)
 	router.replace({name: 'user.settings.linked-accounts'})
 }
 
-onMounted(() => {
-	if (mode.value === 'confirm') return
-	endLinkFlow(props.state)
-	focusBackButton()
+onMounted(async () => {
+	if (mode.value !== 'confirm') {
+		endLinkFlow(props.state)
+		focusBackButton()
+		return
+	}
+
+	try {
+		if (!provider.value) throw new Error(t('user.auth.openIdGeneralError'))
+		const preview = await previewMutation.mutateAsync({
+			provider: props.providerKey,
+			code: props.code,
+			redirect_url: getRedirectUrlFromCurrentFrontendPath(provider.value),
+		})
+		if (active) identity.value = preview
+	} catch (e) {
+		if (!active || isRequestContextAbort(e)) return
+		errorMessage.value = getErrorText(e)
+		endLinkFlow(props.state)
+		mode.value = 'failed'
+	}
 })
 </script>
