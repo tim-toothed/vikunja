@@ -162,15 +162,21 @@ const linkTotpPasscode = ref('')
 const backButton = ref<{$el: HTMLElement} | null>(null)
 const backLink = computed(() => {
 	if (mode.value === 'linkFailed') {
-		return {to: {name: 'user.settings.linked-accounts'}, label: t('user.settings.linkedAccounts.backToLinkedAccounts')}
+		return {
+			to: {name: 'user.settings.linked-accounts'},
+			label: t('user.settings.linkedAccounts.backToLinkedAccounts'),
+		}
 	}
 	if (mode.value === 'noSession') {
-		return {to: {name: 'user.login'}, label: t('user.auth.login')}
+		return {
+			to: {name: 'user.login'},
+			label: t('user.auth.login'),
+		}
 	}
 	return null
 })
-watch(backLink, async link => {
-	if (!link) return
+watch(() => backLink.value?.to.name, async name => {
+	if (!name) return
 	await nextTick()
 	backButton.value?.$el.focus()
 })

@@ -38,6 +38,10 @@ function identityName(identity: LinkedIdentity): string {
 	return identity.provider_name || identity.issuer || ''
 }
 
+function unlinkLabel(identity: LinkedIdentity): string {
+	return t('user.settings.linkedAccounts.unlinkHeader', {provider: identityName(identity)})
+}
+
 const unlinkMutation = useUnlinkIdentityMutation()
 const identityToUnlink = ref<LinkedIdentity | null>(null)
 const unlinkTitle = computed(() => identityToUnlink.value
@@ -118,7 +122,7 @@ async function unlink() {
 						<td class="has-text-end">
 							<XButton
 								variant="secondary"
-								:aria-label="$t('user.settings.linkedAccounts.unlinkHeader', {provider: identityName(identity)})"
+								:aria-label="unlinkLabel(identity)"
 								@click="openUnlink(identity)"
 							>
 								{{ $t('user.settings.linkedAccounts.unlink') }}
