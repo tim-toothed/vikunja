@@ -26,7 +26,8 @@ const totp = useQuery(computed(() => ({
 	...totpQuery(),
 	enabled: configStore.totp_enabled,
 })))
-const totpEnabled = computed(() => totp.data.value?.enabled === true)
+const unlinkNeedsTotp = computed(() => totp.data.value?.enabled === true || totp.isError.value)
+const unlinkTotpPending = computed(() => configStore.totp_enabled && totp.isPending.value)
 
 const unlinkedProviders = computed(() => {
 	const linked = new Set(identities.value.map(i => i.provider_key))
@@ -61,12 +62,12 @@ function closeUnlink() {
 
 async function unlink() {
 	const identity = identityToUnlink.value
-	if (unlinkMutation.isPending.value || !identity?.id || !password.value) return
+	if (unlinkMutation.isPending.value || unlinkTotpPending.value || !identity?.id || !password.value) return
 	try {
 		await unlinkMutation.mutateAsync({
 			id: identity.id,
 			password: password.value,
-			totp_passcode: totpEnabled.value ? totpPasscode.value : undefined,
+			totp_passcode: unlinkNeedsTotp.value ? totpPasscode.value : undefined,
 		})
 	} catch { return }
 	if (identityToUnlink.value === identity) {
@@ -175,7 +176,7 @@ async function unlink() {
 					@keyup.enter="unlink()"
 				/>
 				<FormField
-					v-if="totpEnabled"
+					v-if="unlinkNeedsTotp"
 					id="unlinkIdentityPasscode"
 					v-model="totpPasscode"
 					:label="$t('user.settings.totp.passcode')"
@@ -195,7 +196,7 @@ async function unlink() {
 					</XButton>
 					<XButton
 						danger
-						:loading="unlinkMutation.isPending.value"
+						:loading="unlinkMutation.isPending.value || unlinkTotpPending"
 						@click="unlink()"
 					>
 						{{ $t('user.settings.linkedAccounts.unlink') }}

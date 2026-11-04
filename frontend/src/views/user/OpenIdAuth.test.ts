@@ -223,12 +223,12 @@ describe('OpenIdAuth linking', () => {
 		})
 	})
 
-	it('disables the submit button while the TOTP status is loading', async () => {
+	it('marks the submit button loading while the TOTP status is loading', async () => {
 		sdk.totpGet.mockReturnValue(new Promise(() => {}))
 		const wrapper = mountCallback()
 		await flushPromises()
 
-		expect(wrapper.findAll('x-button-stub')[0].attributes('disabled')).toBe('true')
+		expect(wrapper.findAll('x-button-stub')[0].attributes('loading')).toBe('true')
 		await submitLink(wrapper, 'secret')
 		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
 	})
@@ -239,7 +239,7 @@ describe('OpenIdAuth linking', () => {
 		await flushPromises()
 
 		expect(wrapper.find('#linkIdentityPasscode').exists()).toBe(true)
-		expect(wrapper.findAll('x-button-stub')[0].attributes('disabled')).toBe('false')
+		expect(wrapper.findAll('x-button-stub')[0].attributes('loading')).toBe('false')
 	})
 
 	it('does not submit an empty password', async () => {

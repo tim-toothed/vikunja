@@ -51,8 +51,7 @@
 			<div class="buttons mbs-4">
 				<XButton
 					type="submit"
-					:loading="linkMutation.isPending.value"
-					:disabled="linkTotpPending"
+					:loading="linkMutation.isPending.value || linkTotpPending"
 				>
 					{{ $t('user.settings.linkedAccounts.confirm') }}
 				</XButton>
