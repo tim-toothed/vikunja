@@ -213,22 +213,17 @@ func GetProvider(key string) (provider *Provider, err error) {
 	return
 }
 
-func providersByIssuer(providers []*Provider) map[string]*Provider {
-	byIssuer := make(map[string]*Provider, len(providers))
+func FindProviderByIssuer(providers []*Provider, issuer string) *Provider {
 	for _, provider := range providers {
-		issuer, err := provider.Issuer()
+		providerIssuer, err := provider.Issuer()
 		if err != nil {
 			continue
 		}
-		if _, exists := byIssuer[issuer]; !exists {
-			byIssuer[issuer] = provider
+		if providerIssuer == issuer {
+			return provider
 		}
 	}
-	return byIssuer
-}
-
-func FindProviderByIssuer(providers []*Provider, issuer string) *Provider {
-	return providersByIssuer(providers)[issuer]
+	return nil
 }
 
 // getCachedProvider returns the provider from keyvalue without re-establishing
