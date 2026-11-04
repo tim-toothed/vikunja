@@ -114,7 +114,6 @@ const totp = useQuery(computed(() => ({
 	...totpQuery(),
 	enabled: mode.value === 'confirm' && configStore.totp_enabled,
 })))
-// A missing passcode counts toward the lockout, so ask when unsure.
 const needsTotp = computed(() => totp.data.value?.enabled === true || totp.isError.value)
 const totpPending = computed(() => configStore.totp_enabled && totp.isPending.value)
 const backButton = ref<{$el: HTMLElement} | null>(null)
