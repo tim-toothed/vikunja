@@ -170,14 +170,9 @@ const router = createRouter({
 					name: 'user.settings.linked-accounts',
 					component: () => import('@/views/user/settings/LinkedAccounts.vue'),
 					beforeEnter: async () => {
-						await useBaseStore().appReady
-						const authStore = useAuthStore()
-						// The JWT fallback for info has no is_local_user.
-						if (authStore.info?.is_local_user === undefined) {
-							await authStore.refreshUserInfo()
-						}
+						const info = await loadUserInfo()
 						const {openid_connect} = useConfigStore().auth
-						if (!openid_connect.enabled || openid_connect.providers.length === 0 || !authStore.info?.is_local_user) {
+						if (!openid_connect.enabled || openid_connect.providers.length === 0 || !info?.is_local_user) {
 							return {name: 'user.settings.general'}
 						}
 					},
