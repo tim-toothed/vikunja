@@ -71,15 +71,11 @@ func CheckReauthPassword(ctx context.Context, s *xorm.Session, u *User, password
 
 // Rolls s back on failure.
 func Reauthenticate(ctx context.Context, s *xorm.Session, u *User, password, passcode string) error {
-	return reauthenticate(ctx, s, u, password, passcode, CheckTOTPIfEnabled)
-}
-
-func reauthenticate(ctx context.Context, s *xorm.Session, u *User, password, passcode string, checkTOTP func(*xorm.Session, *User, string) error) error {
 	err := ThrottleReauth(u.ID, func() error {
 		if err := CheckUserPasswordCountingFailures(ctx, s, u, password); err != nil {
 			return err
 		}
-		return checkTOTP(s, u, passcode)
+		return CheckTOTPIfEnabled(s, u, passcode)
 	})
 	if err != nil {
 		handleFailedTOTPCheck(s, u, passcode, err)
@@ -92,14 +88,13 @@ func CheckTOTPIfEnabled(s *xorm.Session, u *User, passcode string) error {
 	if err != nil || !enabled {
 		return err
 	}
-	return checkTOTPPasscode(s, u, passcode)
-}
-
-func checkTOTPPasscode(s *xorm.Session, u *User, passcode string) error {
 	if passcode == "" {
 		return ErrInvalidTOTPPasscode{}
 	}
-	_, err := ValidateTOTPPasscode(s, &TOTPPasscode{User: u, Passcode: passcode})
+	_, err = ValidateTOTPPasscode(s, &TOTPPasscode{
+		User:     u,
+		Passcode: passcode,
+	})
 	return err
 }
 
