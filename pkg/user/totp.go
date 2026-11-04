@@ -91,8 +91,8 @@ func GetTOTPForUser(s *xorm.Session, user *User) (t *TOTP, err error) {
 }
 
 // EnrollTOTP creates a new TOTP entry for the user once their password checks out - it does not enable it yet.
-func EnrollTOTP(s *xorm.Session, user *User, password string) (t *TOTP, err error) {
-	if err = CheckReauthPassword(user, password); err != nil {
+func EnrollTOTP(ctx context.Context, s *xorm.Session, user *User, password string) (t *TOTP, err error) {
+	if err = CheckReauthPassword(ctx, s, user, password); err != nil {
 		return
 	}
 
@@ -123,8 +123,8 @@ func EnrollTOTP(s *xorm.Session, user *User, password string) (t *TOTP, err erro
 }
 
 // EnableTOTP enables totp for a user once their password checks out. The passcode verifies the user has a working totp setup.
-func EnableTOTP(s *xorm.Session, u *User, password, passcode string) (err error) {
-	if err = CheckReauthPassword(u, password); err != nil {
+func EnableTOTP(ctx context.Context, s *xorm.Session, u *User, password, passcode string) (err error) {
+	if err = CheckReauthPassword(ctx, s, u, password); err != nil {
 		return
 	}
 

@@ -144,12 +144,14 @@ func TestEnrollTOTPRequiresPassword(t *testing.T) {
 	u, err := GetUserByID(s, 2)
 	require.NoError(t, err)
 	_ = keyvalue.Del(reauthAttemptsKey(u.ID))
+	_ = keyvalue.Del(u.GetFailedPasswordAttemptsKey())
 
-	_, err = EnrollTOTP(s, u, "wrong")
+	_, err = EnrollTOTP(context.Background(), s, u, "wrong")
 	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+	assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
 	db.AssertMissing(t, "totp", map[string]any{"user_id": u.ID})
 
-	enrolled, err := EnrollTOTP(s, u, "12345678")
+	enrolled, err := EnrollTOTP(context.Background(), s, u, "12345678")
 	require.NoError(t, err)
 	assert.False(t, enrolled.Enabled)
 }
@@ -162,14 +164,16 @@ func TestEnableTOTPRequiresPassword(t *testing.T) {
 	u, err := GetUserByID(s, 1)
 	require.NoError(t, err)
 	_ = keyvalue.Del(reauthAttemptsKey(u.ID))
+	_ = keyvalue.Del(u.GetFailedPasswordAttemptsKey())
 
 	passcode, err := totp.GenerateCode("HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ", time.Now())
 	require.NoError(t, err)
 
-	err = EnableTOTP(s, u, "wrong", passcode)
+	err = EnableTOTP(context.Background(), s, u, "wrong", passcode)
 	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+	assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
 
-	err = EnableTOTP(s, u, "12345678", passcode)
+	err = EnableTOTP(context.Background(), s, u, "12345678", passcode)
 	require.NoError(t, err)
 	enabled, err := TOTPEnabledForUser(s, u)
 	require.NoError(t, err)

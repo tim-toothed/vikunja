@@ -62,9 +62,10 @@ func refundReauthAttempt(key string) {
 	}
 }
 
-func CheckReauthPassword(u *User, password string) error {
+// Wrong guesses count toward the reauth throttle and the account lockout. Rolls s back on a wrong password.
+func CheckReauthPassword(ctx context.Context, s *xorm.Session, u *User, password string) error {
 	return ThrottleReauth(u.ID, func() error {
-		return CheckUserPassword(u, password)
+		return CheckUserPasswordCountingFailures(ctx, s, u, password)
 	})
 }
 

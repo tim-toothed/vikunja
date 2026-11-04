@@ -192,7 +192,7 @@ func totpEnroll(ctx context.Context, in *totpEnrollBody) (*totpStatusBody, error
 	}
 	defer s.Close()
 
-	t, err := user.EnrollTOTP(s, u, in.Body.Password)
+	t, err := user.EnrollTOTP(ctx, s, u, in.Body.Password)
 	if err != nil {
 		_ = s.Rollback()
 		return nil, translateDomainError(err)
@@ -211,7 +211,7 @@ func totpEnable(ctx context.Context, in *totpEnableBody) (*totpMessageBody, erro
 	defer s.Close()
 	defer events.CleanupPending(s)
 
-	if err := user.EnableTOTP(s, u, in.Body.Password, in.Body.Passcode); err != nil {
+	if err := user.EnableTOTP(ctx, s, u, in.Body.Password, in.Body.Passcode); err != nil {
 		_ = s.Rollback()
 		return nil, translateDomainError(err)
 	}
