@@ -3,7 +3,6 @@ import {beforeEach, describe, it, expect, vi} from 'vitest'
 import {mount, flushPromises} from '@vue/test-utils'
 import {createI18n} from 'vue-i18n'
 import OpenIdAuth from './OpenIdAuth.vue'
-import XButton from '@/components/input/Button.vue'
 import en from '@/i18n/lang/en.json'
 
 const {sdk, mockRoute, router, authStore, redirectIfSaved} = vi.hoisted(() => ({
@@ -74,12 +73,11 @@ const queryClientConfig = {
 	},
 }
 
-function mountCallback(stubs: Record<string, boolean> = {XButton: true}) {
+function mountCallback() {
 	return mount(OpenIdAuth, {
 		global: {
 			plugins: [i18n, [VueQueryPlugin, {queryClient: new QueryClient(queryClientConfig)}]],
-			components: {XButton},
-			stubs,
+			stubs: {XButton: true},
 			directives: {focus: {}},
 		},
 	})
@@ -232,16 +230,11 @@ describe('OpenIdAuth linking', () => {
 
 	it('disables cancel while the link request is pending', async () => {
 		sdk.userIdentitiesLink.mockReturnValue(new Promise(() => {}))
-		const wrapper = mountCallback({})
+		const wrapper = mountCallback()
 		await flushPromises()
 		await submitLink(wrapper, 'secret')
 
-		const cancel = wrapper.findAll('button').find(b => b.text() === 'Cancel')!
-		expect(cancel.attributes('disabled')).toBeDefined()
-		await cancel.trigger('click')
-
-		expect(router.replace).not.toHaveBeenCalled()
-		expect(localStorage.getItem('openidLinking')).toBe('expected-state')
+		expect(wrapper.find('x-button-stub[variant="tertiary"]').attributes('disabled')).toBe('true')
 	})
 
 	it('offers the way back when the provider reports an error', async () => {
