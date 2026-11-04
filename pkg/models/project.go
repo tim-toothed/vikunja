@@ -86,7 +86,8 @@ type Project struct {
 	// A timestamp when this project was last updated. You cannot change this value.
 	Updated time.Time `xorm:"updated not null" json:"updated" readOnly:"true" doc:"A timestamp when this project was last updated. You cannot change this value."`
 
-	AccessLossCleanup AccessLossCleanup `xorm:"-" json:"-"`
+	AccessLossCleanup   AccessLossCleanup `xorm:"-" json:"-"`
+	AskBeforeAccessLoss bool              `xorm:"-" json:"-"`
 
 	web.CRUDable    `xorm:"-" json:"-"`
 	web.Permissions `xorm:"-" json:"-"`
@@ -1286,7 +1287,7 @@ func UpdateProject(s *xorm.Session, project *Project, auth web.Auth, updateProje
 			return err
 		}
 
-		err = cleanupAfterProjectMove(s, auth, accessBeforeMove, project.AccessLossCleanup)
+		err = cleanupAfterProjectMove(s, auth, accessBeforeMove, project.AccessLossCleanup, project.AskBeforeAccessLoss)
 		if err != nil {
 			return err
 		}
