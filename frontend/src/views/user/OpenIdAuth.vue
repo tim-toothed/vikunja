@@ -213,9 +213,7 @@ async function authenticateWithCode() {
 			: t('user.auth.openIdGeneralError')
 		if (isLinkingIdentity(queryState.value)) {
 			endLinkFlow(queryState.value)
-			if (authStore.authUser) {
-				mode.value = 'linkFailed'
-			}
+			mode.value = authStore.authUser ? 'linkFailed' : 'noSession'
 		}
 		return
 	}

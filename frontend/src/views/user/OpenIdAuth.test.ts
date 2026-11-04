@@ -197,6 +197,17 @@ describe('OpenIdAuth linking', () => {
 		expect(localStorage.getItem('openidLinking')).toBeNull()
 	})
 
+	it('offers the login when the provider reports an error without a session', async () => {
+		authStore.authUser = false
+		mockRoute.query = {error: 'access_denied', state: 'expected-state'}
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.text()).toContain('An error occurred while authenticating')
+		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.login'})
+		expect(localStorage.getItem('openidLinking')).toBeNull()
+	})
+
 	it('sends the TOTP passcode when TOTP is enabled', async () => {
 		sdk.totpGet.mockResolvedValue({data: {enabled: true}})
 		const wrapper = mountCallback()
