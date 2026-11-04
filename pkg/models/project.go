@@ -1261,6 +1261,14 @@ func UpdateProject(s *xorm.Session, project *Project, auth web.Auth, updateProje
 		}
 	}
 
+	var accessBeforeMove *projectMoveAccess
+	if parentChanged {
+		accessBeforeMove, err = projectAccessBeforeMove(s, project.ID)
+		if err != nil {
+			return err
+		}
+	}
+
 	project.HexColor = utils.NormalizeHex(project.HexColor)
 
 	_, err = s.
@@ -1278,7 +1286,7 @@ func UpdateProject(s *xorm.Session, project *Project, auth web.Auth, updateProje
 			return err
 		}
 
-		err = cleanupAfterProjectMove(s, auth, project.ID, project.AccessLossCleanup)
+		err = cleanupAfterProjectMove(s, auth, accessBeforeMove, project.AccessLossCleanup)
 		if err != nil {
 			return err
 		}
