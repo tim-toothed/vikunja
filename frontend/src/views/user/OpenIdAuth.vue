@@ -74,6 +74,15 @@
 			{{ $t('user.settings.linkedAccounts.backToLinkedAccounts') }}
 		</XButton>
 
+		<XButton
+			v-if="mode === 'noSession'"
+			ref="backButton"
+			class="mbs-2"
+			:to="{name: 'user.login'}"
+		>
+			{{ $t('user.auth.login') }}
+		</XButton>
+
 		<form
 			v-if="needsTotp"
 			@submit.prevent="submitTotpAndRestart"
@@ -155,12 +164,12 @@ const needsTotp = ref(false)
 const totpPasscode = ref('')
 
 const router = useRouter()
-const mode = ref<'login' | 'link' | 'linkFailed'>('login')
+const mode = ref<'login' | 'link' | 'linkFailed' | 'noSession'>('login')
 const linkPassword = ref('')
 const linkTotpPasscode = ref('')
 const backButton = ref<{$el: HTMLElement} | null>(null)
 watch(mode, async newMode => {
-	if (newMode !== 'linkFailed') return
+	if (newMode !== 'linkFailed' && newMode !== 'noSession') return
 	await nextTick()
 	backButton.value?.$el.focus()
 })
@@ -220,6 +229,7 @@ async function authenticateWithCode() {
 		if (!authStore.authUser) {
 			leaveLinkMode()
 			errorMessage.value = t('user.settings.linkedAccounts.noSession')
+			mode.value = 'noSession'
 			return
 		}
 		mode.value = 'link'
