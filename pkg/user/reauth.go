@@ -17,11 +17,14 @@
 package user
 
 import (
+	"context"
 	"strconv"
 	"time"
 
 	"code.vikunja.io/api/pkg/log"
 	"code.vikunja.io/api/pkg/modules/keyvalue"
+
+	"xorm.io/xorm"
 )
 
 const (
@@ -63,4 +66,68 @@ func CheckReauthPassword(u *User, password string) error {
 	return ThrottleReauth(u.ID, func() error {
 		return CheckUserPassword(u, password)
 	})
+}
+
+// CheckReauthPasswordCountingFailures is CheckReauthPassword, but a wrong
+// password also counts toward the account lockout. Rolls s back on a wrong password.
+func CheckReauthPasswordCountingFailures(ctx context.Context, s *xorm.Session, u *User, password string) error {
+	return ThrottleReauth(u.ID, func() error {
+		return CheckUserPasswordCountingFailures(ctx, s, u, password)
+	})
+}
+
+// Reauthenticate checks the password and, if u has TOTP enabled, the passcode.
+// Wrong guesses count toward the reauth throttle and the password or TOTP lockout.
+// Rolls s back on failure.
+func Reauthenticate(ctx context.Context, s *xorm.Session, u *User, password, passcode string) error {
+	return reauthenticate(ctx, s, u, password, passcode, CheckTOTPIfEnabled)
+}
+
+func reauthenticate(ctx context.Context, s *xorm.Session, u *User, password, passcode string, checkTOTP func(*xorm.Session, *User, string) error) error {
+	err := ThrottleReauth(u.ID, func() error {
+		if err := CheckUserPasswordCountingFailures(ctx, s, u, password); err != nil {
+			return err
+		}
+		return checkTOTP(s, u, passcode)
+	})
+	if err != nil {
+		handleFailedTOTPCheck(s, u, passcode, err)
+	}
+	return err
+}
+
+// CheckTOTPIfEnabled returns nil for users without TOTP. A missing passcode is an ErrInvalidTOTPPasscode.
+func CheckTOTPIfEnabled(s *xorm.Session, u *User, passcode string) error {
+	enabled, err := TOTPEnabledForUser(s, u)
+	if err != nil || !enabled {
+		return err
+	}
+	return checkTOTPPasscode(s, u, passcode)
+}
+
+func checkTOTPPasscode(s *xorm.Session, u *User, passcode string) error {
+	if passcode == "" {
+		return ErrInvalidTOTPPasscode{}
+	}
+	_, err := ValidateTOTPPasscode(s, &TOTPPasscode{User: u, Passcode: passcode})
+	return err
+}
+
+// CheckTOTPCountingFailures is CheckTOTPIfEnabled, but a wrong passcode counts
+// toward the TOTP lockout. Rolls s back on failure.
+func CheckTOTPCountingFailures(s *xorm.Session, u *User, passcode string) error {
+	err := CheckTOTPIfEnabled(s, u, passcode)
+	if err != nil {
+		handleFailedTOTPCheck(s, u, passcode, err)
+	}
+	return err
+}
+
+func handleFailedTOTPCheck(s *xorm.Session, u *User, passcode string, err error) {
+	// Rolled back first: HandleFailedTOTPAuth needs its own write lock on SQLite.
+	_ = s.Rollback()
+	// A missing passcode is the prompt for one, not a guess.
+	if passcode != "" && IsErrInvalidTOTPPasscode(err) {
+		HandleFailedTOTPAuth(u)
+	}
 }

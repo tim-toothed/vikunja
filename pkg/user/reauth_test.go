@@ -17,13 +17,16 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/modules/keyvalue"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"xorm.io/xorm"
 )
 
 func TestThrottleReauth(t *testing.T) {
@@ -81,5 +84,106 @@ func TestThrottleReauth(t *testing.T) {
 			_ = ThrottleReauth(userID, wrong)
 		}
 		require.NoError(t, ThrottleReauth(other, ok))
+	})
+}
+
+// user1 has a TOTP row that isn't enabled.
+func setupReauthUser(t *testing.T, id int64) (*xorm.Session, *User) {
+	db.LoadAndAssertFixtures(t)
+	s := db.NewSession()
+	t.Cleanup(func() { s.Close() })
+	u, err := GetUserByID(s, id)
+	require.NoError(t, err)
+	require.NoError(t, keyvalue.Del(reauthAttemptsKey(u.ID)))
+	require.NoError(t, keyvalue.Del(u.GetFailedTOTPAttemptsKey()))
+	require.NoError(t, keyvalue.Del(u.GetFailedPasswordAttemptsKey()))
+	return s, u
+}
+
+func kvCount(t *testing.T, key string) int64 {
+	n, _, err := keyvalue.GetInt64(key)
+	require.NoError(t, err)
+	return n
+}
+
+func TestReauthenticate(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a wrong password counts toward the lockout and the throttle", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+
+		err := Reauthenticate(ctx, s, u, "wrong", "")
+		assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+		assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
+		assert.Equal(t, int64(1), kvCount(t, reauthAttemptsKey(u.ID)))
+	})
+
+	t.Run("a user without TOTP only needs the password", func(t *testing.T) {
+		s, u := setupReauthUser(t, 1)
+
+		require.NoError(t, Reauthenticate(ctx, s, u, "12345678", ""))
+		assert.Equal(t, int64(0), kvCount(t, reauthAttemptsKey(u.ID)))
+	})
+
+	t.Run("a missing passcode is refused without counting toward the TOTP lockout", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+
+		err := Reauthenticate(ctx, s, u, "12345678", "")
+		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
+		assert.Equal(t, int64(0), kvCount(t, u.GetFailedTOTPAttemptsKey()))
+		assert.Equal(t, int64(1), kvCount(t, reauthAttemptsKey(u.ID)))
+	})
+
+	t.Run("a wrong passcode counts toward the TOTP lockout", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+
+		err := Reauthenticate(ctx, s, u, "12345678", "000000")
+		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
+		assert.Equal(t, int64(1), kvCount(t, u.GetFailedTOTPAttemptsKey()))
+		assert.Equal(t, int64(0), kvCount(t, u.GetFailedPasswordAttemptsKey()))
+	})
+
+	t.Run("password and passcode pass", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+		require.NoError(t, Reauthenticate(ctx, s, u, "12345678", freshUser10TOTPCode(t)))
+	})
+}
+
+func TestCheckReauthPasswordCountingFailures(t *testing.T) {
+	s, u := setupReauthUser(t, 1)
+
+	err := CheckReauthPasswordCountingFailures(context.Background(), s, u, "wrong")
+	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+	assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
+	assert.Equal(t, int64(1), kvCount(t, reauthAttemptsKey(u.ID)))
+
+	require.NoError(t, CheckReauthPasswordCountingFailures(context.Background(), s, u, "12345678"))
+}
+
+func TestCheckTOTPCountingFailures(t *testing.T) {
+	t.Run("a user without TOTP passes without a passcode", func(t *testing.T) {
+		s, u := setupReauthUser(t, 1)
+		require.NoError(t, CheckTOTPCountingFailures(s, u, ""))
+	})
+
+	t.Run("a missing passcode is refused without counting", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+
+		err := CheckTOTPCountingFailures(s, u, "")
+		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
+		assert.Equal(t, int64(0), kvCount(t, u.GetFailedTOTPAttemptsKey()))
+	})
+
+	t.Run("a wrong passcode counts toward the TOTP lockout", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+
+		err := CheckTOTPCountingFailures(s, u, "000000")
+		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
+		assert.Equal(t, int64(1), kvCount(t, u.GetFailedTOTPAttemptsKey()))
+	})
+
+	t.Run("a valid passcode passes", func(t *testing.T) {
+		s, u := setupReauthUser(t, 10)
+		require.NoError(t, CheckTOTPCountingFailures(s, u, freshUser10TOTPCode(t)))
 	})
 }
