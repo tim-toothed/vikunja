@@ -18,7 +18,6 @@ package openid
 
 import (
 	"testing"
-	"time"
 
 	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/events"
@@ -27,7 +26,6 @@ import (
 	"code.vikunja.io/api/pkg/notifications"
 	"code.vikunja.io/api/pkg/user"
 
-	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"xorm.io/builder"
@@ -44,7 +42,6 @@ func loadIdentityTestUser(t *testing.T, id int64) *user.User {
 
 	reset := func() {
 		_ = keyvalue.Del(u.GetFailedPasswordAttemptsKey())
-		_ = keyvalue.Del(u.GetFailedTOTPAttemptsKey())
 	}
 	reset()
 	t.Cleanup(reset)
@@ -52,19 +49,17 @@ func loadIdentityTestUser(t *testing.T, id int64) *user.User {
 }
 
 // Own secret: user 10's fixture TOTP and the linked-login test's would collide on "passcode already used".
-func enableTestTOTP(t *testing.T, userID int64) string {
+func enableTestTOTP(t *testing.T, userID int64) {
 	t.Helper()
-	const secret = "JBSWY3DPEHPK3PXP"
 	s := db.NewSession()
 	defer s.Close()
 	_, err := s.Insert(&user.TOTP{
 		UserID:  userID,
-		Secret:  secret,
+		Secret:  "JBSWY3DPEHPK3PXP",
 		Enabled: true,
 	})
 	require.NoError(t, err)
 	require.NoError(t, s.Commit())
-	return secret
 }
 
 func failedAttempts(t *testing.T, key string) int64 {
@@ -147,27 +142,21 @@ func TestLinkIdentity(t *testing.T) {
 			"user_id": 2,
 		})
 	})
-	t.Run("TOTP user", func(t *testing.T) {
-		t.Run("valid passcode links", func(t *testing.T) {
-			db.LoadAndAssertFixtures(t)
-			idp := newMockIDP(t)
-			idp.configure(t)
-			idp.setClaims(map[string]any{"sub": "totp-sub"})
-			u := loadIdentityTestUser(t, 3)
-			secret := enableTestTOTP(t, u.ID)
+	t.Run("missing passcode is refused for a TOTP user", func(t *testing.T) {
+		db.LoadAndAssertFixtures(t)
+		idp := newMockIDP(t)
+		idp.configure(t)
+		idp.setClaims(map[string]any{"sub": "totp-sub"})
+		u := loadIdentityTestUser(t, 3)
+		enableTestTOTP(t, u.ID)
 
-			passcode, err := totp.GenerateCode(secret, time.Now())
-			require.NoError(t, err)
-			req := linkRequest(identityTestPassword)
-			req.TOTPPasscode = passcode
-			_, err = runLink(t, u, req)
-			require.NoError(t, err)
+		_, err := runLink(t, u, linkRequest(identityTestPassword))
+		require.Error(t, err)
 
-			db.AssertExists(t, "user_identities", map[string]interface{}{
-				"user_id": u.ID,
-				"issuer":  idp.URL,
-				"subject": "totp-sub",
-			}, false)
+		assert.True(t, user.IsErrInvalidTOTPPasscode(err), "unexpected error %v", err)
+		assert.Equal(t, int32(0), idp.tokenRequests.Load())
+		db.AssertMissing(t, "user_identities", map[string]interface{}{
+			"user_id": u.ID,
 		})
 	})
 	t.Run("refuses an identity linked to another user", func(t *testing.T) {
@@ -251,20 +240,18 @@ func TestLinkIdentity(t *testing.T) {
 }
 
 func TestUnlinkIdentity(t *testing.T) {
-	t.Run("TOTP user", func(t *testing.T) {
-		t.Run("valid passcode unlinks", func(t *testing.T) {
-			db.LoadAndAssertFixtures(t)
-			u := loadIdentityTestUser(t, 6)
-			secret := enableTestTOTP(t, u.ID)
+	t.Run("missing passcode is refused for a TOTP user", func(t *testing.T) {
+		db.LoadAndAssertFixtures(t)
+		u := loadIdentityTestUser(t, 6)
+		enableTestTOTP(t, u.ID)
 
-			passcode, err := totp.GenerateCode(secret, time.Now())
-			require.NoError(t, err)
-			require.NoError(t, runUnlink(t, u, 3, identityTestPassword, passcode))
+		err := runUnlink(t, u, 3, identityTestPassword, "")
+		require.Error(t, err)
 
-			db.AssertMissing(t, "user_identities", map[string]interface{}{
-				"id": 3,
-			})
-		})
+		assert.True(t, user.IsErrInvalidTOTPPasscode(err), "unexpected error %v", err)
+		db.AssertExists(t, "user_identities", map[string]interface{}{
+			"id": 3,
+		}, false)
 	})
 }
 
