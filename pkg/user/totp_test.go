@@ -17,6 +17,7 @@
 package user
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -209,7 +210,7 @@ func TestDisableTOTPWithReauth(t *testing.T) {
 	t.Run("missing passcode is refused without counting toward the TOTP lockout", func(t *testing.T) {
 		s, u := setup(t)
 
-		err := DisableTOTPWithReauth(s, u, "12345678", "")
+		err := DisableTOTPWithReauth(context.Background(), s, u, "12345678", "")
 		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
 		assert.Equal(t, int64(0), failedAttempts(t, u.GetFailedTOTPAttemptsKey()))
 		db.AssertExists(t, "totp", map[string]any{"user_id": u.ID, "enabled": true}, false)
@@ -218,24 +219,25 @@ func TestDisableTOTPWithReauth(t *testing.T) {
 	t.Run("wrong passcode is refused and counts toward the TOTP lockout", func(t *testing.T) {
 		s, u := setup(t)
 
-		err := DisableTOTPWithReauth(s, u, "12345678", "000000")
+		err := DisableTOTPWithReauth(context.Background(), s, u, "12345678", "000000")
 		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
 		assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedTOTPAttemptsKey()))
 		db.AssertExists(t, "totp", map[string]any{"user_id": u.ID, "enabled": true}, false)
 	})
 
-	t.Run("wrong password is refused", func(t *testing.T) {
+	t.Run("wrong password is refused and counts toward the lockout", func(t *testing.T) {
 		s, u := setup(t)
 
-		err := DisableTOTPWithReauth(s, u, "wrong", freshUser10TOTPCode(t))
+		err := DisableTOTPWithReauth(context.Background(), s, u, "wrong", freshUser10TOTPCode(t))
 		assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+		assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedPasswordAttemptsKey()))
 		db.AssertExists(t, "totp", map[string]any{"user_id": u.ID, "enabled": true}, false)
 	})
 
 	t.Run("password and passcode disable TOTP", func(t *testing.T) {
 		s, u := setup(t)
 
-		require.NoError(t, DisableTOTPWithReauth(s, u, "12345678", freshUser10TOTPCode(t)))
+		require.NoError(t, DisableTOTPWithReauth(context.Background(), s, u, "12345678", freshUser10TOTPCode(t)))
 		require.NoError(t, s.Commit())
 		db.AssertMissing(t, "totp", map[string]any{"user_id": u.ID})
 	})

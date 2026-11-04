@@ -233,7 +233,7 @@ func totpDisable(ctx context.Context, in *totpDisableBody) (*totpMessageBody, er
 	}
 	defer s.Close()
 
-	if err := user.DisableTOTPWithReauth(s, u, in.Body.Password, in.Body.TOTPPasscode); err != nil {
+	if err := user.DisableTOTPWithReauth(ctx, s, u, in.Body.Password, in.Body.TOTPPasscode); err != nil {
 		_ = s.Rollback()
 		return nil, translateDomainError(err)
 	}

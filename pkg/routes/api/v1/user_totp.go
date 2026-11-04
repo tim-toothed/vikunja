@@ -187,7 +187,7 @@ func UserTOTPDisable(c *echo.Context) error {
 	}
 	defer s.Close()
 
-	err = user.DisableTOTPWithReauth(s, u, login.Password, login.TOTPPasscode)
+	err = user.DisableTOTPWithReauth(c.Request().Context(), s, u, login.Password, login.TOTPPasscode)
 	if err != nil {
 		_ = s.Rollback()
 		return err

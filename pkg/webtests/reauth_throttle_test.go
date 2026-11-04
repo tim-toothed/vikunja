@@ -34,8 +34,8 @@ func TestReauthThrottle(t *testing.T) {
 		// failure locks the account, which revokes the session.
 		locksAccount bool
 	}{
-		{"v1 totp disable", http.MethodPost, "/api/v1/user/settings/totp/disable", `{"password":"wrong"}`, `{"password":"12345678"}`, false},
-		{"v2 totp disable", http.MethodPost, "/api/v2/user/settings/totp/disable", `{"password":"wrong"}`, `{"password":"12345678"}`, false},
+		{"v1 totp disable", http.MethodPost, "/api/v1/user/settings/totp/disable", `{"password":"wrong"}`, `{"password":"12345678"}`, true},
+		{"v2 totp disable", http.MethodPost, "/api/v2/user/settings/totp/disable", `{"password":"wrong"}`, `{"password":"12345678"}`, true},
 		{"v1 totp enroll", http.MethodPost, "/api/v1/user/settings/totp/enroll", `{"password":"wrong"}`, `{"password":"12345678"}`, false},
 		{"v2 totp enroll", http.MethodPost, "/api/v2/user/settings/totp/enroll", `{"password":"wrong"}`, `{"password":"12345678"}`, false},
 		{"v1 totp enable", http.MethodPost, "/api/v1/user/settings/totp/enable", `{"passcode":"000000","password":"wrong"}`, `{"passcode":"000000","password":"12345678"}`, false},

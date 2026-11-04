@@ -18,6 +18,7 @@ package user
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -147,24 +148,10 @@ func DisableTOTP(s *xorm.Session, user *User) (err error) {
 	return
 }
 
-// Needs a passcode so a stolen session plus the password can't strip the second factor. Rolls s back on failure.
-func DisableTOTPWithReauth(s *xorm.Session, u *User, password, passcode string) error {
-	err := ThrottleReauth(u.ID, func() error {
-		if err := CheckUserPassword(u, password); err != nil {
-			return err
-		}
-		if passcode == "" {
-			return ErrInvalidTOTPPasscode{}
-		}
-		_, err := ValidateTOTPPasscode(s, &TOTPPasscode{User: u, Passcode: passcode})
-		return err
-	})
-	if err != nil {
-		// Rolled back first: HandleFailedTOTPAuth needs its own write lock on SQLite.
-		_ = s.Rollback()
-		if passcode != "" && IsErrInvalidTOTPPasscode(err) {
-			HandleFailedTOTPAuth(u)
-		}
+// Needs a passcode, even for an enrollment that isn't enabled yet, so a stolen
+// session plus the password can't strip the second factor. Rolls s back on failure.
+func DisableTOTPWithReauth(ctx context.Context, s *xorm.Session, u *User, password, passcode string) error {
+	if err := reauthenticate(ctx, s, u, password, passcode, checkTOTPPasscode); err != nil {
 		return err
 	}
 
