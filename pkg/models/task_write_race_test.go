@@ -29,8 +29,6 @@ import (
 	"xorm.io/xorm"
 )
 
-// Each write's permission check passes, then task 1 moves to project 2 (user 3's, not shared
-// with user 1) before the write, which must fail and leave the data untouched.
 func TestTaskChildWrites_TaskMovedToForbiddenProject(t *testing.T) {
 	u := &user.User{ID: 1}
 
