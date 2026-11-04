@@ -83,6 +83,7 @@ describe('redirectToProvider', () => {
 
 		expect(isLinkingIdentity(localStorage.getItem('state')!)).toBe(true)
 		const url = new URL(window.location.href)
+		expect(url.searchParams.get('prompt')).toBe('select_account')
 		expect(url.searchParams.get('redirect_uri')).toBe('http://localhost/auth/openid/authentik')
 		expect(url.searchParams.get('state')).toBe(localStorage.getItem('state'))
 	})
@@ -93,6 +94,7 @@ describe('redirectToProvider', () => {
 		redirectToProvider(fullProvider)
 
 		expect(isLinkingIdentity(linkState)).toBe(false)
+		expect(new URL(window.location.href).searchParams.has('prompt')).toBe(false)
 	})
 
 	it('is not in link mode for a different state', () => {

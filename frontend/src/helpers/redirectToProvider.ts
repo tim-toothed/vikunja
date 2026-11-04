@@ -44,7 +44,7 @@ export const redirectToProvider = (provider: IProvider, {linking = false}: {link
 		localStorage.removeItem(LINKING_KEY)
 	}
 
-	window.location.href = `${provider.auth_url}?client_id=${provider.client_id}&redirect_uri=${redirectUrl}&response_type=code&scope=${provider.scope}&state=${state}`
+	window.location.href = `${provider.auth_url}?client_id=${provider.client_id}&redirect_uri=${redirectUrl}&response_type=code&scope=${provider.scope}&state=${state}${linking ? '&prompt=select_account' : ''}`
 }
 
 export const redirectToProviderOnLogout = (provider: IProvider): boolean => {
