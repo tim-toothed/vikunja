@@ -1,19 +1,9 @@
-import type {APIRequestContext, Page} from '@playwright/test'
+import type {APIRequestContext} from '@playwright/test'
 import {test, expect} from '../../../support/fixtures'
 import {gotoUserSettings} from '../../../support/userSettings'
+import {linkDexAccount} from '../../../support/linkedAccounts'
 import {UserIdentityFactory} from '../../../factories/user_identity'
 import {TEST_PASSWORD} from '../../../support/constants'
-
-async function linkDexAccount(page: Page) {
-	await page.getByRole('button', {name: 'Link Dex', exact: true}).click()
-
-	await expect(page.locator('h2')).toContainText('Log in to Your Account')
-	await page.locator('#login').fill('test@example.com')
-	await page.locator('#password').fill('12345678')
-	await page.locator('#submit-login').click()
-
-	await expect(page.getByText('Link Dex to your account')).toBeVisible()
-}
 
 async function listIdentities(apiContext: APIRequestContext, token: string) {
 	const response = await apiContext.get('/api/v2/user/settings/identities', {

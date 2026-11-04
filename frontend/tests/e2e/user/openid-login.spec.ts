@@ -1,6 +1,7 @@
 import {setupApiUrl} from '../../support/authenticateUser'
 import {TEST_PASSWORD} from '../../support/constants'
 import {gotoUserSettings} from '../../support/userSettings'
+import {linkDexAccount} from '../../support/linkedAccounts'
 import {test, expect} from '../../support/fixtures'
 
 test.describe('OpenID Login', () => {
@@ -33,11 +34,7 @@ test.describe('OpenID Login', () => {
 		await expect(page).toHaveURL('/')
 
 		await gotoUserSettings(page, 'linked-accounts')
-		await page.getByRole('button', {name: 'Link Dex', exact: true}).click()
-		await expect(page.locator('h2')).toContainText('Log in to Your Account')
-		await page.locator('#login').fill('test@example.com')
-		await page.locator('#password').fill('12345678')
-		await page.locator('#submit-login').click()
+		await linkDexAccount(page)
 		await page.locator('#linkIdentityPassword').fill(TEST_PASSWORD)
 		await page.getByRole('button', {name: 'Link account'}).click()
 		await expect(page.locator('.card table')).toContainText('Dex')
