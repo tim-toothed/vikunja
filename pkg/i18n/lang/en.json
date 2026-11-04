@@ -16,7 +16,7 @@
             "linked": {
                 "subject": "%[1]s was linked to your Vikunja account",
                 "message": "Your %[1]s account was linked to your Vikunja account on %[2]s. You can now log in with it.",
-                "warning": "If this wasn't you, unlink it in your account settings and change your password immediately."
+                "warning": "If this wasn't you, change your password immediately, then unlink it in your account settings."
             }
         },
         "password": {
