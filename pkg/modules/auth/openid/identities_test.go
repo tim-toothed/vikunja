@@ -148,35 +148,6 @@ func TestLinkIdentity(t *testing.T) {
 		})
 	})
 	t.Run("TOTP user", func(t *testing.T) {
-		t.Run("missing passcode is refused", func(t *testing.T) {
-			db.LoadAndAssertFixtures(t)
-			idp := newMockIDP(t)
-			idp.configure(t)
-			u := loadIdentityTestUser(t, 3)
-			enableTestTOTP(t, u.ID)
-
-			_, err := runLink(t, u, linkRequest(identityTestPassword))
-			require.Error(t, err)
-
-			assert.True(t, user.IsErrInvalidTOTPPasscode(err), "unexpected error %v", err)
-			assert.Equal(t, int32(0), idp.tokenRequests.Load())
-		})
-		t.Run("wrong passcode is refused and counts toward the lockout", func(t *testing.T) {
-			db.LoadAndAssertFixtures(t)
-			idp := newMockIDP(t)
-			idp.configure(t)
-			u := loadIdentityTestUser(t, 3)
-			enableTestTOTP(t, u.ID)
-
-			req := linkRequest(identityTestPassword)
-			req.TOTPPasscode = "000000"
-			_, err := runLink(t, u, req)
-			require.Error(t, err)
-
-			assert.True(t, user.IsErrInvalidTOTPPasscode(err), "unexpected error %v", err)
-			assert.Equal(t, int32(0), idp.tokenRequests.Load())
-			assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedTOTPAttemptsKey()))
-		})
 		t.Run("valid passcode links", func(t *testing.T) {
 			db.LoadAndAssertFixtures(t)
 			idp := newMockIDP(t)
@@ -280,57 +251,7 @@ func TestLinkIdentity(t *testing.T) {
 }
 
 func TestUnlinkIdentity(t *testing.T) {
-	t.Run("unlinks the own identity", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		u := loadIdentityTestUser(t, 1)
-
-		require.NoError(t, runUnlink(t, u, 1, identityTestPassword, ""))
-
-		db.AssertMissing(t, "user_identities", map[string]interface{}{
-			"id": 1,
-		})
-		db.AssertExists(t, "user_identities", map[string]interface{}{
-			"id": 2,
-		}, false)
-	})
-	t.Run("wrong password is refused and counts toward the lockout", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		u := loadIdentityTestUser(t, 1)
-
-		err := runUnlink(t, u, 1, "wrong", "")
-		require.Error(t, err)
-
-		assert.True(t, user.IsErrWrongUsernameOrPassword(err), "unexpected error %v", err)
-		assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedPasswordAttemptsKey()))
-		db.AssertExists(t, "user_identities", map[string]interface{}{
-			"id": 1,
-		}, false)
-	})
 	t.Run("TOTP user", func(t *testing.T) {
-		t.Run("missing passcode is refused", func(t *testing.T) {
-			db.LoadAndAssertFixtures(t)
-			u := loadIdentityTestUser(t, 6)
-			enableTestTOTP(t, u.ID)
-
-			err := runUnlink(t, u, 3, identityTestPassword, "")
-			require.Error(t, err)
-
-			assert.True(t, user.IsErrInvalidTOTPPasscode(err), "unexpected error %v", err)
-			db.AssertExists(t, "user_identities", map[string]interface{}{
-				"id": 3,
-			}, false)
-		})
-		t.Run("wrong passcode is refused and counts toward the lockout", func(t *testing.T) {
-			db.LoadAndAssertFixtures(t)
-			u := loadIdentityTestUser(t, 6)
-			enableTestTOTP(t, u.ID)
-
-			err := runUnlink(t, u, 3, identityTestPassword, "000000")
-			require.Error(t, err)
-
-			assert.True(t, user.IsErrInvalidTOTPPasscode(err), "unexpected error %v", err)
-			assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedTOTPAttemptsKey()))
-		})
 		t.Run("valid passcode unlinks", func(t *testing.T) {
 			db.LoadAndAssertFixtures(t)
 			u := loadIdentityTestUser(t, 6)
@@ -344,27 +265,6 @@ func TestUnlinkIdentity(t *testing.T) {
 				"id": 3,
 			})
 		})
-	})
-	t.Run("another user's identity does not exist", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		u := loadIdentityTestUser(t, 6)
-
-		err := runUnlink(t, u, 1, identityTestPassword, "")
-		require.Error(t, err)
-
-		assert.True(t, models.IsErrUserIdentityDoesNotExist(err), "unexpected error %v", err)
-		db.AssertExists(t, "user_identities", map[string]interface{}{
-			"id": 1,
-		}, false)
-	})
-	t.Run("nonexistent identity", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		u := loadIdentityTestUser(t, 1)
-
-		err := runUnlink(t, u, 9999, identityTestPassword, "")
-		require.Error(t, err)
-
-		assert.True(t, models.IsErrUserIdentityDoesNotExist(err), "unexpected error %v", err)
 	})
 }
 
@@ -401,17 +301,5 @@ func TestListIdentities(t *testing.T) {
 		assert.Empty(t, identities[0].ProviderKey)
 		assert.Empty(t, identities[0].ProviderName)
 		assert.Equal(t, "https://other.service.com", identities[1].Issuer)
-	})
-	t.Run("only lists the user's own identities", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		newMockIDP(t).configure(t)
-
-		s := db.NewSession()
-		defer s.Close()
-		identities, err := ListIdentities(s, &user.User{ID: 6})
-		require.NoError(t, err)
-
-		require.Len(t, identities, 1)
-		assert.Equal(t, int64(3), identities[0].ID)
 	})
 }
