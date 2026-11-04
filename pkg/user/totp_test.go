@@ -175,16 +175,3 @@ func TestEnableTOTPRequiresPassword(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, enabled)
 }
-
-// user10 fixture: TOTP enabled with this secret, password 12345678.
-const user10TOTPSecret = "JBSWY3DPEHPK3PXP" //nolint:gosec
-
-// Passcodes are single-use and other tests in this package share the secret.
-func freshUser10TOTPCode(t *testing.T) string {
-	passcode, err := totp.GenerateCode(user10TOTPSecret, time.Now())
-	require.NoError(t, err)
-	usedKey := "totp_used_10_" + passcode
-	require.NoError(t, keyvalue.Del(usedKey))
-	t.Cleanup(func() { _ = keyvalue.Del(usedKey) })
-	return passcode
-}

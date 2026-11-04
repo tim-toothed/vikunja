@@ -173,6 +173,32 @@ func TestHumaTOTP(t *testing.T) {
 		assert.Equal(t, int64(1), attempts)
 	})
 
+	for _, version := range []string{"v1", "v2"} {
+		t.Run(version+" disable refuses a pending enrollment", func(t *testing.T) {
+			e, err := setupTestEnv()
+			require.NoError(t, err)
+			passcode, err := totp.GenerateCode("HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ", time.Now())
+			require.NoError(t, err)
+			rec := humaRequest(t, e, http.MethodPost, "/api/"+version+"/user/settings/totp/disable",
+				fmt.Sprintf(`{"password":"12345678","totp_passcode":%q}`, passcode), humaTokenFor(t, &testuser1), "")
+			require.Equal(t, http.StatusPreconditionFailed, rec.Code, "body: %s", rec.Body.String())
+			assert.Equal(t, user.ErrCodeTOTPNotEnabled, problemCode(t, rec))
+			db.AssertExists(t, "totp", map[string]interface{}{
+				"user_id": 1,
+				"enabled": false,
+			}, false)
+		})
+
+		t.Run(version+" disable refuses a missing enrollment without asking for a passcode", func(t *testing.T) {
+			e, err := setupTestEnv()
+			require.NoError(t, err)
+			rec := humaRequest(t, e, http.MethodPost, "/api/"+version+"/user/settings/totp/disable",
+				`{"password":"12345678"}`, humaTokenFor(t, &testuser15), "")
+			require.Equal(t, http.StatusPreconditionFailed, rec.Code, "body: %s", rec.Body.String())
+			assert.Equal(t, user.ErrCodeTOTPNotEnabled, problemCode(t, rec))
+		})
+	}
+
 	t.Run("Non-local user is refused on every route", func(t *testing.T) {
 		e, err := setupTestEnv()
 		require.NoError(t, err)
