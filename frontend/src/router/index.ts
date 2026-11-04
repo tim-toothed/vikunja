@@ -17,6 +17,7 @@ import {useAuthStore} from '@/stores/auth'
 import {useBaseStore} from '@/stores/base'
 import {useConfigStore} from '@/stores/config'
 import {loadUserInfo} from '@/router/loadUserInfo'
+import {canLinkAccounts} from '@/helpers/canLinkAccounts'
 
 import Login from '@/views/user/Login.vue'
 import Register from '@/views/user/Register.vue'
@@ -171,8 +172,7 @@ const router = createRouter({
 					component: () => import('@/views/user/settings/LinkedAccounts.vue'),
 					beforeEnter: async () => {
 						const info = await loadUserInfo()
-						const {openid_connect} = useConfigStore().auth
-						if (!openid_connect.enabled || openid_connect.providers.length === 0 || !info?.is_local_user) {
+						if (!canLinkAccounts(useConfigStore().auth.openid_connect, info)) {
 							return {name: 'user.settings.general'}
 						}
 					},
