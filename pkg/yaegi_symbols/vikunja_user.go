@@ -18,7 +18,6 @@ func init() {
 		"CancelEmailUpdate":                    reflect.ValueOf(user.CancelEmailUpdate),
 		"ChangeUserEmail":                      reflect.ValueOf(user.ChangeUserEmail),
 		"CheckReauthPassword":                  reflect.ValueOf(user.CheckReauthPassword),
-		"CheckReauthPasswordCountingFailures":  reflect.ValueOf(user.CheckReauthPasswordCountingFailures),
 		"CheckTOTPCountingFailures":            reflect.ValueOf(user.CheckTOTPCountingFailures),
 		"CheckTOTPIfEnabled":                   reflect.ValueOf(user.CheckTOTPIfEnabled),
 		"CheckUserCanAuthenticate":             reflect.ValueOf(user.CheckUserCanAuthenticate),

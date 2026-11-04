@@ -69,14 +69,6 @@ func CheckReauthPassword(ctx context.Context, s *xorm.Session, u *User, password
 	})
 }
 
-// CheckReauthPasswordCountingFailures is CheckReauthPassword, but a wrong
-// password also counts toward the account lockout. Rolls s back on a wrong password.
-func CheckReauthPasswordCountingFailures(ctx context.Context, s *xorm.Session, u *User, password string) error {
-	return ThrottleReauth(u.ID, func() error {
-		return CheckUserPasswordCountingFailures(ctx, s, u, password)
-	})
-}
-
 // Reauthenticate checks the password and, if u has TOTP enabled, the passcode.
 // Wrong guesses count toward the reauth throttle and the password or TOTP lockout.
 // Rolls s back on failure.

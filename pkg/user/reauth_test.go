@@ -149,15 +149,15 @@ func TestReauthenticate(t *testing.T) {
 	})
 }
 
-func TestCheckReauthPasswordCountingFailures(t *testing.T) {
+func TestCheckReauthPassword(t *testing.T) {
 	s, u := setupReauthUser(t, 1)
 
-	err := CheckReauthPasswordCountingFailures(context.Background(), s, u, "wrong")
+	err := CheckReauthPassword(context.Background(), s, u, "wrong")
 	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
 	assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
 	assert.Equal(t, int64(1), kvCount(t, reauthAttemptsKey(u.ID)))
 
-	require.NoError(t, CheckReauthPasswordCountingFailures(context.Background(), s, u, "12345678"))
+	require.NoError(t, CheckReauthPassword(context.Background(), s, u, "12345678"))
 }
 
 func TestCheckTOTPCountingFailures(t *testing.T) {

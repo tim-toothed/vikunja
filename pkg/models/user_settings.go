@@ -81,7 +81,7 @@ func ChangeUserPassword(ctx context.Context, s *xorm.Session, u *user.User, oldP
 		return &user.ErrAccountIsNotLocal{UserID: target.ID}
 	}
 
-	if err := user.CheckReauthPasswordCountingFailures(ctx, s, target, oldPassword); err != nil {
+	if err := user.CheckReauthPassword(ctx, s, target, oldPassword); err != nil {
 		return err
 	}
 
