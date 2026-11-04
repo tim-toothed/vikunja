@@ -49,7 +49,7 @@ func TestGetIdentityByIssuerAndSubject(t *testing.T) {
 	})
 }
 
-func TestUserIdentitySubjectIsCaseSensitive(t *testing.T) {
+func TestIdentitySubjectIsCaseSensitive(t *testing.T) {
 	db.LoadAndAssertFixtures(t)
 	s := db.NewSession()
 	defer s.Close()
