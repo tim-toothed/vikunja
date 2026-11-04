@@ -5,7 +5,7 @@ import {UserIdentityFactory} from '../../../factories/user_identity'
 import {TEST_PASSWORD} from '../../../support/constants'
 
 async function linkDexAccount(page: Page) {
-	await page.getByRole('button', {name: 'Link Dex'}).click()
+	await page.getByRole('button', {name: 'Link Dex', exact: true}).click()
 
 	await expect(page.locator('h2')).toContainText('Log in to Your Account')
 	await page.locator('#login').fill('test@example.com')
@@ -39,7 +39,7 @@ test.describe('Linked accounts', () => {
 		await expect(page).toHaveURL(/\/user\/settings\/linked-accounts/)
 		await page.reload()
 		await expect(page.locator('.card table')).toContainText('Dex')
-		await expect(page.getByRole('button', {name: 'Link Dex'})).toHaveCount(0)
+		await expect(page.getByRole('button', {name: 'Link Dex', exact: true})).toHaveCount(0)
 
 		const identities = await listIdentities(apiContext, userToken)
 		expect(identities).toHaveLength(1)
