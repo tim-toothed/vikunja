@@ -89,6 +89,8 @@ func init() {
 		"GetUserByUsername":                    reflect.ValueOf(user.GetUserByUsername),
 		"GetUserByUsernameForAuth":             reflect.ValueOf(user.GetUserByUsernameForAuth),
 		"GetUserFromClaims":                    reflect.ValueOf(user.GetUserFromClaims),
+		"GetUserIdentitiesByUserID":            reflect.ValueOf(user.GetUserIdentitiesByUserID),
+		"GetUserIdentityByIssuerAndSubject":    reflect.ValueOf(user.GetUserIdentityByIssuerAndSubject),
 		"GetUserWithEmail":                     reflect.ValueOf(user.GetUserWithEmail),
 		"GetUsersByCond":                       reflect.ValueOf(user.GetUsersByCond),
 		"GetUsersByIDs":                        reflect.ValueOf(user.GetUsersByIDs),
@@ -241,5 +243,6 @@ func init() {
 		"Token":                                             reflect.ValueOf((*user.Token)(nil)),
 		"TokenKind":                                         reflect.ValueOf((*user.TokenKind)(nil)),
 		"User":                                              reflect.ValueOf((*user.User)(nil)),
+		"UserIdentity":                                      reflect.ValueOf((*user.UserIdentity)(nil)),
 	}
 }
