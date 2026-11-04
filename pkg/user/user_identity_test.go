@@ -25,13 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetUserIdentityByIssuerAndSubject(t *testing.T) {
+func TestGetIdentityByIssuerAndSubject(t *testing.T) {
 	t.Run("linked identity", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)
 		s := db.NewSession()
 		defer s.Close()
 
-		identity, found, err := GetUserIdentityByIssuerAndSubject(s, "https://some.service.com", "linked-user1")
+		identity, found, err := GetIdentityByIssuerAndSubject(s, "https://some.service.com", "linked-user1")
 		require.NoError(t, err)
 		require.True(t, found)
 		assert.Equal(t, int64(1), identity.ID)
@@ -42,7 +42,7 @@ func TestGetUserIdentityByIssuerAndSubject(t *testing.T) {
 		s := db.NewSession()
 		defer s.Close()
 
-		identity, found, err := GetUserIdentityByIssuerAndSubject(s, "https://other.service.com", "linked-user1")
+		identity, found, err := GetIdentityByIssuerAndSubject(s, "https://other.service.com", "linked-user1")
 		require.NoError(t, err)
 		assert.False(t, found)
 		assert.Nil(t, identity)
@@ -55,41 +55,41 @@ func TestUserIdentitySubjectIsCaseSensitive(t *testing.T) {
 	defer s.Close()
 
 	const issuer = "https://case.service.com"
-	_, err := s.Insert(&UserIdentity{
+	_, err := s.Insert(&Identity{
 		UserID:  1,
 		Issuer:  issuer,
 		Subject: "Alice",
 	})
 	require.NoError(t, err)
-	_, err = s.Insert(&UserIdentity{
+	_, err = s.Insert(&Identity{
 		UserID:  2,
 		Issuer:  issuer,
 		Subject: "alice",
 	})
 	require.NoError(t, err, "subjects differing only in case are distinct identities")
 
-	upper, found, err := GetUserIdentityByIssuerAndSubject(s, issuer, "Alice")
+	upper, found, err := GetIdentityByIssuerAndSubject(s, issuer, "Alice")
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, int64(1), upper.UserID)
 
-	lower, found, err := GetUserIdentityByIssuerAndSubject(s, issuer, "alice")
+	lower, found, err := GetIdentityByIssuerAndSubject(s, issuer, "alice")
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, int64(2), lower.UserID)
 
-	_, found, err = GetUserIdentityByIssuerAndSubject(s, "https://CASE.service.com", "Alice")
+	_, found, err = GetIdentityByIssuerAndSubject(s, "https://CASE.service.com", "Alice")
 	require.NoError(t, err)
 	assert.False(t, found, "issuers are compared case-sensitively too")
 }
 
-func TestGetUserIdentitiesByUserID(t *testing.T) {
+func TestGetIdentitiesByUserID(t *testing.T) {
 	t.Run("user with identities", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)
 		s := db.NewSession()
 		defer s.Close()
 
-		identities, err := GetUserIdentitiesByUserID(s, 1)
+		identities, err := GetIdentitiesByUserID(s, 1)
 		require.NoError(t, err)
 		require.Len(t, identities, 2)
 		assert.Equal(t, int64(1), identities[0].ID)
@@ -103,7 +103,7 @@ func TestGetUserIdentitiesByUserID(t *testing.T) {
 		s := db.NewSession()
 		defer s.Close()
 
-		identities, err := GetUserIdentitiesByUserID(s, 2)
+		identities, err := GetIdentitiesByUserID(s, 2)
 		require.NoError(t, err)
 		assert.Empty(t, identities)
 	})

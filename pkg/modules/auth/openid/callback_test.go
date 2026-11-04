@@ -363,7 +363,7 @@ func linkIdentity(t *testing.T, userID int64, issuer, subject string) {
 	t.Helper()
 	s := db.NewSession()
 	defer s.Close()
-	_, err := s.Insert(&user.UserIdentity{
+	_, err := s.Insert(&user.Identity{
 		UserID:  userID,
 		Issuer:  issuer,
 		Subject: subject,

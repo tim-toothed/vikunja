@@ -80,6 +80,8 @@ func init() {
 		"GetCurrentUser":                       reflect.ValueOf(user.GetCurrentUser),
 		"GetCurrentUserFromDB":                 reflect.ValueOf(user.GetCurrentUserFromDB),
 		"GetFromAuth":                          reflect.ValueOf(user.GetFromAuth),
+		"GetIdentitiesByUserID":                reflect.ValueOf(user.GetIdentitiesByUserID),
+		"GetIdentityByIssuerAndSubject":        reflect.ValueOf(user.GetIdentityByIssuerAndSubject),
 		"GetTOTPForUser":                       reflect.ValueOf(user.GetTOTPForUser),
 		"GetTOTPQrCodeAsJpegForUser":           reflect.ValueOf(user.GetTOTPQrCodeAsJpegForUser),
 		"GetTOTPQrCodeForUser":                 reflect.ValueOf(user.GetTOTPQrCodeForUser),
@@ -89,8 +91,6 @@ func init() {
 		"GetUserByUsername":                    reflect.ValueOf(user.GetUserByUsername),
 		"GetUserByUsernameForAuth":             reflect.ValueOf(user.GetUserByUsernameForAuth),
 		"GetUserFromClaims":                    reflect.ValueOf(user.GetUserFromClaims),
-		"GetUserIdentitiesByUserID":            reflect.ValueOf(user.GetUserIdentitiesByUserID),
-		"GetUserIdentityByIssuerAndSubject":    reflect.ValueOf(user.GetUserIdentityByIssuerAndSubject),
 		"GetUserWithEmail":                     reflect.ValueOf(user.GetUserWithEmail),
 		"GetUsersByCond":                       reflect.ValueOf(user.GetUsersByCond),
 		"GetUsersByIDs":                        reflect.ValueOf(user.GetUsersByIDs),
@@ -226,6 +226,7 @@ func init() {
 		"ErrUsernameReserved":                               reflect.ValueOf((*user.ErrUsernameReserved)(nil)),
 		"ErrWrongUsernameOrPassword":                        reflect.ValueOf((*user.ErrWrongUsernameOrPassword)(nil)),
 		"FailedLoginAttemptNotification":                    reflect.ValueOf((*user.FailedLoginAttemptNotification)(nil)),
+		"Identity":                                          reflect.ValueOf((*user.Identity)(nil)),
 		"InvalidTOTPNotification":                           reflect.ValueOf((*user.InvalidTOTPNotification)(nil)),
 		"Login":                                             reflect.ValueOf((*user.Login)(nil)),
 		"LoginFailedEvent":                                  reflect.ValueOf((*user.LoginFailedEvent)(nil)),
@@ -243,6 +244,5 @@ func init() {
 		"Token":                                             reflect.ValueOf((*user.Token)(nil)),
 		"TokenKind":                                         reflect.ValueOf((*user.TokenKind)(nil)),
 		"User":                                              reflect.ValueOf((*user.User)(nil)),
-		"UserIdentity":                                      reflect.ValueOf((*user.UserIdentity)(nil)),
 	}
 }

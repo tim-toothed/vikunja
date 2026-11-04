@@ -23,7 +23,7 @@ import (
 )
 
 // Matched on Issuer, not the provider key, so key renames don't break links.
-type UserIdentity struct {
+type Identity struct {
 	ID      int64     `xorm:"bigint autoincr not null unique pk" json:"id"`
 	UserID  int64     `xorm:"bigint not null unique(user_issuer)" json:"-"`
 	Issuer  string    `xorm:"varchar(250) not null collate utf8mb4_bin unique(user_issuer) unique(issuer_subject)" json:"issuer"`
@@ -31,12 +31,12 @@ type UserIdentity struct {
 	Created time.Time `xorm:"created not null" json:"created"`
 }
 
-func (*UserIdentity) TableName() string {
+func (*Identity) TableName() string {
 	return "user_identities"
 }
 
-func GetUserIdentityByIssuerAndSubject(s *xorm.Session, issuer, subject string) (identity *UserIdentity, found bool, err error) {
-	identity = &UserIdentity{}
+func GetIdentityByIssuerAndSubject(s *xorm.Session, issuer, subject string) (identity *Identity, found bool, err error) {
+	identity = &Identity{}
 	found, err = s.Where("issuer = ? AND subject = ?", issuer, subject).Get(identity)
 	if err != nil || !found {
 		return nil, false, err
@@ -44,8 +44,8 @@ func GetUserIdentityByIssuerAndSubject(s *xorm.Session, issuer, subject string) 
 	return identity, true, nil
 }
 
-func GetUserIdentitiesByUserID(s *xorm.Session, userID int64) (identities []*UserIdentity, err error) {
-	identities = []*UserIdentity{}
+func GetIdentitiesByUserID(s *xorm.Session, userID int64) (identities []*Identity, err error) {
+	identities = []*Identity{}
 	err = s.Where("user_id = ?", userID).OrderBy("id ASC").Find(&identities)
 	return identities, err
 }
