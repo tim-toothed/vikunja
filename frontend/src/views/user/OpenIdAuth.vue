@@ -178,7 +178,7 @@ const totp = useQuery(computed(() => ({
 	...totpQuery(),
 	enabled: mode.value === 'link' && configStore.totp_enabled,
 })))
-// Fail towards asking for a passcode: a missing one is rejected by the backend and counts toward the lockout.
+// A missing passcode is rejected and counts toward the lockout, so ask when unsure.
 const linkNeedsTotp = computed(() => totp.data.value?.enabled === true || totp.isError.value)
 const linkTotpPending = computed(() => configStore.totp_enabled && totp.isPending.value)
 const providerName = computed(() => findProvider(route.params.provider as string)?.name ?? route.params.provider)
@@ -315,7 +315,7 @@ function cancelLinking() {
 	router.replace({name: 'user.settings.linked-accounts'})
 }
 
-// Consuming the state makes Back or reload on this callback fail the state check instead of logging in with the code.
+// Consumed so Back or reload fails the state check instead of logging in with the code.
 function leaveLinkMode() {
 	const state = route.query.state as string
 	clearLinkingMarker(state)
