@@ -685,6 +685,17 @@ export type HealthBodyBody = {
     status?: 'OK' | 'degraded';
 };
 
+export type IdentityPreview = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * The provider account being linked, from the verified ID token.
+     */
+    account?: string;
+};
+
 export type Image = {
     /**
      * A URL to the JSON Schema for this object.
@@ -3178,6 +3189,25 @@ export type UserChangePasswordRequest = {
     old_password?: string;
 };
 
+export type UserIdentitiesPreviewRequest = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * The authorization code the provider redirected back with.
+     */
+    code?: string;
+    /**
+     * The provider key as returned by /info.
+     */
+    provider?: string;
+    /**
+     * The redirect URL the authorization request was started with.
+     */
+    redirect_url?: string;
+};
+
 export type UserIdentitiesUnlinkRequest = {
     /**
      * A URL to the JSON Schema for this object.
@@ -3990,6 +4020,13 @@ export type HealthBodyBodyWritable = {
      * "OK" when the service and its dependencies are reachable, "degraded" when the service itself is healthy but at least one configured OpenID Connect provider is not available.
      */
     status?: 'OK' | 'degraded';
+};
+
+export type IdentityPreviewWritable = {
+    /**
+     * The provider account being linked, from the verified ID token.
+     */
+    account?: string;
 };
 
 export type ImageWritable = {
@@ -4986,6 +5023,21 @@ export type UserChangePasswordRequestWritable = {
      * The current password, for confirmation.
      */
     old_password?: string;
+};
+
+export type UserIdentitiesPreviewRequestWritable = {
+    /**
+     * The authorization code the provider redirected back with.
+     */
+    code?: string;
+    /**
+     * The provider key as returned by /info.
+     */
+    provider?: string;
+    /**
+     * The redirect URL the authorization request was started with.
+     */
+    redirect_url?: string;
 };
 
 export type UserIdentitiesUnlinkRequestWritable = {
@@ -11575,6 +11627,31 @@ export type UserIdentitiesLinkResponses = {
 };
 
 export type UserIdentitiesLinkResponse = UserIdentitiesLinkResponses[keyof UserIdentitiesLinkResponses];
+
+export type UserIdentitiesPreviewData = {
+    body: UserIdentitiesPreviewRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/user/settings/identities/preview';
+};
+
+export type UserIdentitiesPreviewErrors = {
+    /**
+     * Error
+     */
+    default: VikunjaErrorModel;
+};
+
+export type UserIdentitiesPreviewError = UserIdentitiesPreviewErrors[keyof UserIdentitiesPreviewErrors];
+
+export type UserIdentitiesPreviewResponses = {
+    /**
+     * OK
+     */
+    200: IdentityPreview;
+};
+
+export type UserIdentitiesPreviewResponse = UserIdentitiesPreviewResponses[keyof UserIdentitiesPreviewResponses];
 
 export type UserIdentitiesUnlinkData = {
     body: UserIdentitiesUnlinkRequestWritable;
