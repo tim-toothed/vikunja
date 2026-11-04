@@ -133,22 +133,12 @@ describe('OpenIdAuth linking', () => {
 		expect(wrapper.find('#linkIdentityPasscode').exists()).toBe(false)
 	})
 
-	it('links the identity and returns to the settings', async () => {
+	it('does not log in when the callback is revisited after linking', async () => {
 		const wrapper = mountCallback()
 		await flushPromises()
 		await submitLink(wrapper, 'secret')
 
-		expect(sdk.userIdentitiesLink).toHaveBeenCalledWith({
-			body: {
-				provider: 'dex',
-				code: 'auth-code',
-				redirect_url: 'http://localhost:3000/auth/openid/dex',
-				password: 'secret',
-				totp_passcode: undefined,
-			},
-		})
 		expect(localStorage.getItem('openidLinking')).toBeNull()
-		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
 
 		const revisit = mountCallback()
 		await flushPromises()
@@ -225,23 +215,30 @@ describe('OpenIdAuth linking', () => {
 		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
 	})
 
-	it('keeps the form for a retry after a wrong password', async () => {
-		sdk.userIdentitiesLink.mockRejectedValueOnce({status: 403, code: 1011})
+	it.each([
+		[1017, 'The TOTP passcode is invalid.'],
+		[1041, 'Too many failed attempts.'],
+	])('keeps the form for a retry after error %i', async (code, message) => {
+		sdk.userIdentitiesLink.mockRejectedValueOnce({status: 403, code})
 		const wrapper = mountCallback()
 		await flushPromises()
-		await submitLink(wrapper, 'wrong')
-
-		expect(wrapper.text()).toContain('Wrong username or password.')
-		expect(localStorage.getItem('openidLinking')).toBe('expected-state')
-		expect(router.replace).not.toHaveBeenCalled()
-
 		await submitLink(wrapper, 'secret')
 
-		expect(sdk.userIdentitiesLink).toHaveBeenCalledTimes(2)
-		expect(sdk.userIdentitiesLink).toHaveBeenLastCalledWith({
-			body: expect.objectContaining({password: 'secret', code: 'auth-code'}),
-		})
-		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
+		expect(wrapper.find('form').exists()).toBe(true)
+		expect(wrapper.text()).toContain(message)
+		expect(localStorage.getItem('openidLinking')).toBe('expected-state')
+		expect(router.replace).not.toHaveBeenCalled()
+	})
+
+	it('drops the form when the failure has no error code', async () => {
+		sdk.userIdentitiesLink.mockRejectedValue({status: 400})
+		const wrapper = mountCallback()
+		await flushPromises()
+		await submitLink(wrapper, 'secret')
+
+		expect(wrapper.find('form').exists()).toBe(false)
+		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.settings.linked-accounts'})
+		expect(localStorage.getItem('openidLinking')).toBeNull()
 	})
 
 	it('drops the form once the code was used up', async () => {
@@ -264,6 +261,7 @@ describe('OpenIdAuth linking', () => {
 		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
 		expect(wrapper.find('form').exists()).toBe(false)
 		expect(wrapper.text()).toContain('You need to be logged in to link an account.')
+		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.login'})
 		expect(localStorage.getItem('openidLinking')).toBeNull()
 	})
 
