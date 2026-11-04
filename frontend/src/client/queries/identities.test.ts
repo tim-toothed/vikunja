@@ -45,24 +45,6 @@ it('treats a missing identity list as empty', async () => {
 	expect(await client.fetchQuery(identitiesQuery())).toEqual([])
 })
 
-it('adds a linked identity once, also on a relink', async () => {
-	const client = new QueryClient()
-	client.setQueryData(identityKeys.list, [dex])
-	sdk.userIdentitiesLink.mockResolvedValue({data: dex})
-	const body = {
-		provider: 'dex',
-		code: 'code',
-		redirect_url: 'http://127.0.0.1:4173/auth/openid/dex',
-		password: 'secret',
-	}
-
-	await client.getMutationCache().build(client, linkIdentityMutationOptions()).execute(body)
-
-	expect(sdk.userIdentitiesLink).toHaveBeenCalledWith({body})
-	expect(client.getQueryData(identityKeys.list)).toEqual([dex])
-	expect(client.getQueryState(identityKeys.list)?.isInvalidated).toBe(true)
-})
-
 it('does not toast a failed link', async () => {
 	const client = new QueryClient()
 	sdk.userIdentitiesLink.mockRejectedValue({status: 403, code: 1011})
@@ -75,21 +57,6 @@ it('does not toast a failed link', async () => {
 	})).rejects.toEqual({status: 403, code: 1011})
 
 	expect(message.error).not.toHaveBeenCalled()
-})
-
-it('does not materialize an unmounted list when linking', async () => {
-	const client = new QueryClient()
-	sdk.userIdentitiesLink.mockResolvedValue({data: dex})
-
-	await client.getMutationCache().build(client, linkIdentityMutationOptions()).execute({
-		provider: 'dex',
-		code: 'code',
-		redirect_url: 'url',
-		password: 'secret',
-	})
-
-	expect(client.getQueryData(identityKeys.list)).toBeUndefined()
-	expect(client.getQueryState(identityKeys.list)).toBeUndefined()
 })
 
 it('removes an unlinked identity and sends the reauth fields as the body', async () => {

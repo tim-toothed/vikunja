@@ -28,11 +28,6 @@ export function identitiesQuery() {
 export function linkIdentityMutationOptions() {
 	return contextMutationOptions({
 		mutationFn: async (body: LinkIdentityRequestWritable) => (await userIdentitiesLink({body})).data,
-		onSuccess: (identity, _input, client) => {
-			client.setQueryData<LinkedIdentity[]>(identityKeys.list, current => current
-				? [...current.filter(i => i.id !== identity.id), identity]
-				: current)
-		},
 		onSettled: (_input, client) => client.invalidateQueries({queryKey: identityKeys.list}),
 		successMessage: () => i18n.global.t('user.settings.linkedAccounts.linkSuccess'),
 		// The callback page shows the error next to the form instead.
