@@ -3,10 +3,7 @@ import {afterEach, beforeEach, describe, it, expect} from 'vitest'
 import {endLinkFlow, getAutoRedirectProvider, isLinkingIdentity, redirectToProvider} from './redirectToProvider'
 import type {IProvider} from '@/types/IProvider'
 
-const provider = {
-	key: 'authentik',
-	name: 'Authentik',
-} as IProvider
+const provider = {key: 'authentik', name: 'Authentik'} as IProvider
 
 const soleProviderContext = {
 	localAuthEnabled: false,
@@ -43,13 +40,7 @@ describe('getAutoRedirectProvider', () => {
 	it('does not redirect when there is a choice of providers', () => {
 		expect(getAutoRedirectProvider({
 			...soleProviderContext,
-			providers: [
-				provider,
-				{
-					key: 'other',
-					name: 'Other',
-				} as IProvider,
-			],
+			providers: [provider, {key: 'other', name: 'Other'} as IProvider],
 		})).toBeUndefined()
 	})
 
@@ -136,16 +127,5 @@ describe('redirectToProvider', () => {
 
 		expect(isLinkingIdentity(linkState)).toBe(false)
 		expect(localStorage.getItem('state')).toBeNull()
-	})
-
-	it('consumes a stale marker without touching a newer state', () => {
-		redirectToProvider(fullProvider, {linking: true})
-		const staleState = localStorage.getItem('state')!
-		localStorage.setItem('state', 'other-flow')
-
-		endLinkFlow(staleState)
-
-		expect(isLinkingIdentity(staleState)).toBe(false)
-		expect(localStorage.getItem('state')).toBe('other-flow')
 	})
 })

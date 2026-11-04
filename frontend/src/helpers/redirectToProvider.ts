@@ -35,7 +35,6 @@ export function endLinkFlow(state: unknown) {
 
 // Linking reuses the login redirect URI so admins don't have to register a second one at the provider.
 export const redirectToProvider = (provider: IProvider, {linking = false}: {linking?: boolean} = {}) => {
-
 	const redirectUrl = getRedirectUrlFromCurrentFrontendPath(provider)
 	const state = createRandomID(24)
 	localStorage.setItem('state', state)
