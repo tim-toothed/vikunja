@@ -19,6 +19,7 @@ package openid
 import (
 	"testing"
 
+	"code.vikunja.io/api/pkg/config"
 	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/events"
 	"code.vikunja.io/api/pkg/models"
@@ -230,6 +231,87 @@ func TestLinkIdentity(t *testing.T) {
 		assert.Equal(t, first.ID, second.ID)
 		assert.Equal(t, mockIDPProviderKey, second.ProviderKey)
 		db.AssertCount(t, "user_identities", builder.Eq{"user_id": u.ID}, 1)
+	})
+}
+
+func TestPreviewIdentity(t *testing.T) {
+	t.Run("shows the verified account and preserves it across reload and password retries", func(t *testing.T) {
+		db.LoadAndAssertFixtures(t)
+		idp := newMockIDP(t)
+		idp.configure(t)
+		idp.setClaims(map[string]any{
+			"sub":   "preview-sub",
+			"email": "alice@example.com",
+		})
+		u := loadIdentityTestUser(t, 2)
+		req := linkRequest("wrong")
+		for range 2 {
+			preview, err := PreviewIdentity(t.Context(), u, req)
+			require.NoError(t, err)
+			assert.Equal(t, "alice@example.com", preview.Account)
+		}
+		_, err := runLink(t, u, req)
+		require.Error(t, err)
+		assert.True(t, user.IsErrWrongUsernameOrPassword(err))
+		db.AssertMissing(t, "user_identities", map[string]interface{}{"user_id": u.ID})
+		req.Password = identityTestPassword
+		identity, err := runLink(t, u, req)
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), idp.tokenRequests.Load())
+		db.AssertExists(t, "user_identities", map[string]interface{}{
+			"id":      identity.ID,
+			"user_id": u.ID,
+			"subject": "preview-sub",
+		}, false)
+		require.NoError(t, runUnlink(t, u, identity.ID, identityTestPassword, ""))
+		idp.Close()
+		_, err = runLink(t, u, req)
+		require.Error(t, err, "the consumed preview must not relink after unlinking")
+		db.AssertMissing(t, "user_identities", map[string]interface{}{"user_id": u.ID})
+	})
+
+	t.Run("binds the prepared identity to the current user and callback", func(t *testing.T) {
+		db.LoadAndAssertFixtures(t)
+		idp := newMockIDP(t)
+		idp.configure(t)
+		idp.setClaims(map[string]any{"sub": "private-sub"})
+		u := loadIdentityTestUser(t, 2)
+		req := linkRequest(identityTestPassword)
+		preview, err := PreviewIdentity(t.Context(), u, req)
+		require.NoError(t, err)
+		assert.Equal(t, "private-sub", preview.Account)
+		idp.Close()
+		other := loadIdentityTestUser(t, 3)
+		_, err = runLink(t, other, req)
+		require.Error(t, err)
+		changed := *req
+		changed.RedirectURL = "https://other.example.com/callback"
+		_, err = runLink(t, u, &changed)
+		require.Error(t, err)
+		db.AssertMissing(t, "user_identities", map[string]interface{}{"user_id": other.ID})
+		_, err = runLink(t, u, req)
+		require.NoError(t, err)
+		db.AssertExists(t, "user_identities", map[string]interface{}{
+			"user_id": u.ID,
+			"subject": "private-sub",
+		}, false)
+	})
+
+	t.Run("refuses a prepared identity after its provider is removed", func(t *testing.T) {
+		db.LoadAndAssertFixtures(t)
+		idp := newMockIDP(t)
+		idp.configure(t)
+		u := loadIdentityTestUser(t, 2)
+		req := linkRequest(identityTestPassword)
+		t.Cleanup(func() { _ = keyvalue.Del(identityPreviewKey(u.ID, req)) })
+		_, err := PreviewIdentity(t.Context(), u, req)
+		require.NoError(t, err)
+		config.AuthOpenIDProviders.Set(map[string]interface{}{})
+		_, err = runLink(t, u, req)
+		require.Error(t, err)
+		var providerErr *models.ErrOpenIDBadRequest
+		require.ErrorAs(t, err, &providerErr)
+		db.AssertMissing(t, "user_identities", map[string]interface{}{"user_id": u.ID})
 	})
 }
 
