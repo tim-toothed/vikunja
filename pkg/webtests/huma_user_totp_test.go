@@ -163,7 +163,7 @@ func TestHumaTOTP(t *testing.T) {
 		require.NoError(t, err)
 		rec := humaRequest(t, e, http.MethodPost, "/api/v2/user/settings/totp/disable",
 			`{"password":"wrong-password"}`, humaTokenFor(t, &testuser10), "")
-		require.NotEqual(t, http.StatusOK, rec.Code, "wrong password must not disable totp; body: %s", rec.Body.String())
+		require.Equal(t, http.StatusForbidden, rec.Code, "body: %s", rec.Body.String())
 		attempts, exists, err := keyvalue.Get(testuser10.GetFailedPasswordAttemptsKey())
 		require.NoError(t, err)
 		require.True(t, exists, "a wrong password must count toward the account lockout")
