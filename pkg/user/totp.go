@@ -148,11 +148,17 @@ func DisableTOTP(s *xorm.Session, user *User) (err error) {
 	return
 }
 
-// Needs a passcode, even for an enrollment that isn't enabled yet, so a stolen
-// session plus the password can't strip the second factor. Rolls s back on failure.
 func DisableTOTPWithReauth(ctx context.Context, s *xorm.Session, u *User, password, passcode string) error {
-	if err := reauthenticate(ctx, s, u, password, passcode, checkTOTPPasscode); err != nil {
+	if err := Reauthenticate(ctx, s, u, password, passcode); err != nil {
 		return err
+	}
+
+	enabled, err := TOTPEnabledForUser(s, u)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return ErrTOTPNotEnabled{}
 	}
 
 	return DisableTOTP(s, u)
