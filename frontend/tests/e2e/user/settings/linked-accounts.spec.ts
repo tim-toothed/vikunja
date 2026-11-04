@@ -80,6 +80,12 @@ test.describe('Linked accounts', () => {
 		await row.getByRole('button', {name: 'Unlink'}).click()
 
 		const dialog = page.getByRole('dialog', {name: 'Unlink https://gone.example.com'})
+		await dialog.locator('#unlinkIdentityPassword').fill('wrong password')
+		await dialog.getByRole('button', {name: 'Unlink'}).click()
+		await expect(page.locator('.global-notification')).toContainText('Wrong username or password.')
+		await expect(dialog).toBeVisible()
+		expect(await listIdentities(apiContext, userToken)).toHaveLength(1)
+
 		await dialog.locator('#unlinkIdentityPassword').fill(TEST_PASSWORD)
 		await dialog.getByRole('button', {name: 'Unlink'}).click()
 
