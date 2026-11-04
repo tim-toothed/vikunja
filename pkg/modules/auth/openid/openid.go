@@ -178,8 +178,7 @@ func (p *Provider) Issuer() (issuerURL string, err error) {
 	return iss.Issuer, nil
 }
 
-// Not CheckTOTPCountingFailures: on failure the callback commits the user it
-// may have just created instead of rolling back. See GHSA-8jvc-mcx6-r4cg.
+// Not CheckTOTPCountingFailures: its rollback would drop a just-created user (GHSA-8jvc-mcx6-r4cg).
 func enforceTOTPIfRequired(s *xorm.Session, u *user.User, totpPasscode string) error {
 	if err := user.CheckTOTPIfEnabled(s, u, totpPasscode); err != nil {
 		return err

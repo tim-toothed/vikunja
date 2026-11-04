@@ -62,15 +62,13 @@ func refundReauthAttempt(key string) {
 	}
 }
 
-// Wrong guesses count toward the reauth throttle and the account lockout. Rolls s back on a wrong password.
+// Rolls s back on a wrong password.
 func CheckReauthPassword(ctx context.Context, s *xorm.Session, u *User, password string) error {
 	return ThrottleReauth(u.ID, func() error {
 		return CheckUserPasswordCountingFailures(ctx, s, u, password)
 	})
 }
 
-// Reauthenticate checks the password and, if u has TOTP enabled, the passcode.
-// Wrong guesses count toward the reauth throttle and the password or TOTP lockout.
 // Rolls s back on failure.
 func Reauthenticate(ctx context.Context, s *xorm.Session, u *User, password, passcode string) error {
 	return reauthenticate(ctx, s, u, password, passcode, CheckTOTPIfEnabled)
@@ -89,7 +87,6 @@ func reauthenticate(ctx context.Context, s *xorm.Session, u *User, password, pas
 	return err
 }
 
-// CheckTOTPIfEnabled returns nil for users without TOTP. A missing passcode is an ErrInvalidTOTPPasscode.
 func CheckTOTPIfEnabled(s *xorm.Session, u *User, passcode string) error {
 	enabled, err := TOTPEnabledForUser(s, u)
 	if err != nil || !enabled {
@@ -106,8 +103,7 @@ func checkTOTPPasscode(s *xorm.Session, u *User, passcode string) error {
 	return err
 }
 
-// CheckTOTPCountingFailures is CheckTOTPIfEnabled, but a wrong passcode counts
-// toward the TOTP lockout. Rolls s back on failure.
+// Rolls s back on failure.
 func CheckTOTPCountingFailures(s *xorm.Session, u *User, passcode string) error {
 	err := CheckTOTPIfEnabled(s, u, passcode)
 	if err != nil {

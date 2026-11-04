@@ -58,8 +58,7 @@ func TestReauthThrottle(t *testing.T) {
 				require.Equal(t, http.StatusForbidden, rec.Code, "attempt %d; body: %s", i, rec.Body.String())
 			}
 
-			// Wrong passwords count toward the account lockout, so the 10th
-			// failure locks the account, which revokes the session.
+			// The 10th wrong password locks the account, revoking the session.
 			rec := humaRequest(t, e, tc.method, tc.path, tc.right, token, "")
 			assert.Equal(t, http.StatusUnauthorized, rec.Code, "body: %s", rec.Body.String())
 		})
