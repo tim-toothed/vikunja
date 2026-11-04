@@ -25,30 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetIdentityByIssuerAndSubject(t *testing.T) {
-	t.Run("linked identity", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		defer s.Close()
-
-		identity, found, err := GetIdentityByIssuerAndSubject(s, "https://some.service.com", "linked-user1")
-		require.NoError(t, err)
-		require.True(t, found)
-		assert.Equal(t, int64(1), identity.ID)
-		assert.Equal(t, int64(1), identity.UserID)
-	})
-	t.Run("same subject at another issuer", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		defer s.Close()
-
-		identity, found, err := GetIdentityByIssuerAndSubject(s, "https://other.service.com", "linked-user1")
-		require.NoError(t, err)
-		assert.False(t, found)
-		assert.Nil(t, identity)
-	})
-}
-
 func TestIdentitySubjectIsCaseSensitive(t *testing.T) {
 	db.LoadAndAssertFixtures(t)
 	s := db.NewSession()

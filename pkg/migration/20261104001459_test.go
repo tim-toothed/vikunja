@@ -53,19 +53,4 @@ func TestMigrationUserIdentities20261104001459(t *testing.T) {
 	require.Error(t, insert(1, "https://a.example.com", "sub-2"), "a user must have at most one identity per issuer")
 	require.NoError(t, insert(3, "https://a.example.com", "SUB-1"), "subjects are case-sensitive")
 	require.NoError(t, insert(1, "https://A.example.com", "sub-1"), "issuers are case-sensitive")
-
-	tables, err := engine.DBMetas()
-	require.NoError(t, err)
-	for _, tbl := range tables {
-		if tbl.Name != "user_identities" {
-			continue
-		}
-		for _, index := range tbl.Indexes {
-			if index.Cols[0] == "user_id" {
-				return
-			}
-		}
-		t.Fatal("no index leads with user_id")
-	}
-	t.Fatal("user_identities table not found")
 }

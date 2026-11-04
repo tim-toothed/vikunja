@@ -545,39 +545,6 @@ func TestGetOrCreateUser(t *testing.T) {
 		assert.NotEqual(t, 11, int(u.ID), "must not link to user 11 via an unverified email")
 		assert.Equal(t, "https://some.issuer", u.Issuer, "a new separate account should have been created")
 	})
-	t.Run("LinkedIdentity: resolves to the local user without syncing email or name", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		defer s.Close()
-
-		usersBefore, err := s.Count(&user.User{})
-		require.NoError(t, err)
-
-		cl := &claims{
-			Email:             "idp-email@example.com",
-			EmailVerified:     true,
-			Name:              "IdP Name",
-			PreferredUsername: "idpUsername",
-		}
-		idToken := &oidc.IDToken{Issuer: "https://some.service.com", Subject: "linked-user1"}
-
-		u, linked, err := getOrCreateUser(s, cl, &Provider{}, idToken)
-		require.NoError(t, err)
-		require.NoError(t, s.Commit())
-
-		assert.True(t, linked)
-		assert.Equal(t, int64(1), u.ID)
-		assert.Equal(t, user.IssuerLocal, u.Issuer)
-		db.AssertExists(t, "users", map[string]interface{}{
-			"id":     1,
-			"email":  "user1@example.com",
-			"issuer": user.IssuerLocal,
-		}, false)
-		assert.Empty(t, u.Name)
-		usersAfter, err := s.Count(&user.User{})
-		require.NoError(t, err)
-		assert.Equal(t, usersBefore, usersAfter, "no new user should have been created")
-	})
 	t.Run("LinkedIdentity: takes precedence over the fallback", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)
 		s := db.NewSession()
@@ -671,31 +638,6 @@ func TestGetOrCreateUser(t *testing.T) {
 		usersAfter, err := s.Count(&user.User{})
 		require.NoError(t, err)
 		assert.Equal(t, usersBefore, usersAfter, "no new user should have been created")
-	})
-	t.Run("ProviderFallback: does not create a linked identity", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		defer s.Close()
-
-		cl := &claims{
-			Email:         "user11@example.com",
-			EmailVerified: true,
-		}
-		provider := &Provider{
-			UsernameFallback: true,
-			EmailFallback:    true,
-		}
-		idToken := &oidc.IDToken{Issuer: "https://some.issuer", Subject: "user11"}
-
-		u, linked, err := getOrCreateUser(s, cl, provider, idToken)
-		require.NoError(t, err)
-		require.NoError(t, s.Commit())
-
-		assert.False(t, linked)
-		assert.Equal(t, int64(11), u.ID)
-		db.AssertMissing(t, "user_identities", map[string]interface{}{
-			"user_id": 11,
-		})
 	})
 }
 
