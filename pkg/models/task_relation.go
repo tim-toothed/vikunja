@@ -208,6 +208,9 @@ func checkTaskRelationCycle(s *xorm.Session, relation *TaskRelation, otherTaskID
 // @Failure 500 {object} models.Message "Internal error"
 // @Router /tasks/{taskID}/relations [put]
 func (rel *TaskRelation) Create(s *xorm.Session, a web.Auth) error {
+	if _, err := lockTaskForWrite(s, a, rel.TaskID); err != nil {
+		return err
+	}
 	return rel.create(s, a, true)
 }
 
@@ -430,6 +433,9 @@ func (rel *TaskRelation) Delete(s *xorm.Session, a web.Auth) error {
 	// Load the full relation first (populates CreatedBy)
 	err := rel.ReadOne(s, a)
 	if err != nil {
+		return err
+	}
+	if _, err = lockTaskForWrite(s, a, rel.TaskID); err != nil {
 		return err
 	}
 
