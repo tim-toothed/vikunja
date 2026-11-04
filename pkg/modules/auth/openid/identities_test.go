@@ -61,13 +61,6 @@ func enableTestTOTP(t *testing.T, userID int64) {
 	require.NoError(t, s.Commit())
 }
 
-func failedAttempts(t *testing.T, key string) int64 {
-	t.Helper()
-	attempts, _, err := keyvalue.GetInt64(key)
-	require.NoError(t, err)
-	return attempts
-}
-
 func linkRequest(password string) *LinkIdentityRequest {
 	return &LinkIdentityRequest{
 		Provider: mockIDPProviderKey,
@@ -136,7 +129,9 @@ func TestLinkIdentity(t *testing.T) {
 
 		assert.True(t, user.IsErrWrongUsernameOrPassword(err), "unexpected error %v", err)
 		assert.Equal(t, int32(0), idp.tokenRequests.Load(), "the single-use code must survive a typo")
-		assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedPasswordAttemptsKey()))
+		attempts, _, err := keyvalue.GetInt64(u.GetFailedPasswordAttemptsKey())
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), attempts)
 		db.AssertMissing(t, "user_identities", map[string]interface{}{
 			"user_id": 2,
 		})
