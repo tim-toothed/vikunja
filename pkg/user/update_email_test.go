@@ -331,6 +331,22 @@ func TestChangeUserEmail(t *testing.T) {
 		assert.Equal(t, "user1@example.com", updated.Email)
 		assert.Empty(t, updated.PendingEmail)
 	})
+	t.Run("a wrong password counts toward the lockout", func(t *testing.T) {
+		db.LoadAndAssertFixtures(t)
+		s := db.NewSession()
+		defer s.Close()
+
+		u := &User{ID: 1}
+		require.NoError(t, keyvalue.Del(u.GetFailedPasswordAttemptsKey()))
+		require.NoError(t, keyvalue.Del(reauthAttemptsKey(u.ID)))
+
+		err := ChangeUserEmail(context.Background(), s, u, "wrong", "new1@example.com")
+		require.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+
+		attempts, _, err := keyvalue.GetInt64(u.GetFailedPasswordAttemptsKey())
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), attempts)
+	})
 	t.Run("changes the email", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)
 		s := db.NewSession()

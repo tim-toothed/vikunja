@@ -28,6 +28,7 @@ import (
 	"code.vikunja.io/api/pkg/models"
 	"code.vikunja.io/api/pkg/modules/auth"
 	"code.vikunja.io/api/pkg/modules/avatar"
+	"code.vikunja.io/api/pkg/modules/keyvalue"
 	"code.vikunja.io/api/pkg/routes"
 	"code.vikunja.io/api/pkg/routes/api/shared"
 	"code.vikunja.io/api/pkg/user"
@@ -121,15 +122,23 @@ func TestHumaLogin(t *testing.T) {
 	})
 
 	t.Run("TOTP required but missing", func(t *testing.T) {
+		require.NoError(t, keyvalue.Del(testuser10.GetFailedTOTPAttemptsKey()))
 		rec := login(`{"username":"user10","password":"12345678"}`)
 		assert.Equal(t, http.StatusPreconditionFailed, rec.Code)
 		assert.Equal(t, user.ErrCodeInvalidTOTPPasscode, problemCode(t, rec))
+		_, counted, err := keyvalue.Get(testuser10.GetFailedTOTPAttemptsKey())
+		require.NoError(t, err)
+		assert.False(t, counted, "the 412 prompt must not count toward the TOTP lockout")
 	})
 
 	t.Run("TOTP wrong", func(t *testing.T) {
+		require.NoError(t, keyvalue.Del(testuser10.GetFailedTOTPAttemptsKey()))
 		rec := login(`{"username":"user10","password":"12345678","totp_passcode":"000000"}`)
 		assert.Equal(t, http.StatusPreconditionFailed, rec.Code)
 		assert.Equal(t, user.ErrCodeInvalidTOTPPasscode, problemCode(t, rec))
+		attempts, _, err := keyvalue.GetInt64(testuser10.GetFailedTOTPAttemptsKey())
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), attempts)
 	})
 
 	t.Run("TOTP correct", func(t *testing.T) {
