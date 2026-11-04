@@ -601,7 +601,7 @@ router.beforeEach(async (to, from) => {
 		// Also awaits config hydration, so the license check doesn't race the empty default.
 		const info = await loadUserInfo()
 		const featureOn = useConfigStore().isProFeatureEnabled(PRO_FEATURE.ADMIN_PANEL)
-		if (!featureOn || info?.is_admin !== true) {
+		if (!featureOn || !info?.is_admin) {
 			return {name: 'not-found'}
 		}
 	}

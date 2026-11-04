@@ -4,7 +4,7 @@ const {authStore, baseStore, configStore} = vi.hoisted(() => {
 	const authStore = {
 		authUser: true,
 		authLinkShare: false,
-		info: {id: 1, username: 'user1'} as Record<string, unknown> | null,
+		currentAccount: null as Record<string, unknown> | null,
 		checkAuth: vi.fn(async () => {}),
 		refreshUserInfo: vi.fn(async () => {}),
 		verifyEmail: vi.fn(),
@@ -32,7 +32,7 @@ async function navigateToAdmin() {
 
 describe('admin panel route guard', () => {
 	beforeEach(() => {
-		authStore.info = {id: 1, username: 'user1'}
+		authStore.currentAccount = null
 		authStore.refreshUserInfo.mockReset()
 		configStore.isProFeatureEnabled.mockReturnValue(true)
 		baseStore.appReady = Promise.resolve()
@@ -40,7 +40,7 @@ describe('admin panel route guard', () => {
 
 	it('fetches /user when only the JWT fallback is loaded', async () => {
 		authStore.refreshUserInfo.mockImplementation(async () => {
-			authStore.info = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
+			authStore.currentAccount = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
 		})
 
 		expect(await navigateToAdmin()).toBe('admin.overview')
@@ -48,7 +48,7 @@ describe('admin panel route guard', () => {
 	})
 
 	it('does not refetch a loaded user', async () => {
-		authStore.info = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
+		authStore.currentAccount = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
 
 		expect(await navigateToAdmin()).toBe('admin.overview')
 		expect(authStore.refreshUserInfo).not.toHaveBeenCalled()
@@ -58,7 +58,7 @@ describe('admin panel route guard', () => {
 		let ready = false
 		baseStore.appReady = new Promise(resolve => setTimeout(() => {
 			ready = true
-			authStore.info = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
+			authStore.currentAccount = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
 			resolve()
 		}, 0))
 
@@ -68,13 +68,13 @@ describe('admin panel route guard', () => {
 	})
 
 	it('hides the panel from non-admins', async () => {
-		authStore.info = {id: 1, username: 'user1', is_admin: false, is_local_user: true}
+		authStore.currentAccount = {id: 1, username: 'user1', is_admin: false, is_local_user: true}
 
 		expect(await navigateToAdmin()).toBe('not-found')
 	})
 
 	it('hides the panel when the feature is off', async () => {
-		authStore.info = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
+		authStore.currentAccount = {id: 1, username: 'user1', is_admin: true, is_local_user: true}
 		configStore.isProFeatureEnabled.mockReturnValue(false)
 
 		expect(await navigateToAdmin()).toBe('not-found')
