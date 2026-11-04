@@ -65,7 +65,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 		return nil, err
 	}
 
-	// Ended before the IdP round trips so the checks below don't run on a stale snapshot.
+	// Don't hold the transaction across the IdP round trips.
 	if err := s.Rollback(); err != nil {
 		return nil, err
 	}
