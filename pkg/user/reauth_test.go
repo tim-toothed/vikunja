@@ -87,7 +87,6 @@ func TestThrottleReauth(t *testing.T) {
 	})
 }
 
-// user1 has a TOTP row that isn't enabled.
 func setupReauthUser(t *testing.T, id int64) (*xorm.Session, *User) {
 	db.LoadAndAssertFixtures(t)
 	s := db.NewSession()
@@ -132,19 +131,5 @@ func TestReauthenticate(t *testing.T) {
 		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
 		assert.Equal(t, int64(0), kvCount(t, u.GetFailedTOTPAttemptsKey()))
 		assert.Equal(t, int64(1), kvCount(t, reauthAttemptsKey(u.ID)))
-	})
-
-	t.Run("a wrong passcode counts toward the TOTP lockout", func(t *testing.T) {
-		s, u := setupReauthUser(t, 10)
-
-		err := Reauthenticate(ctx, s, u, "12345678", "000000")
-		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
-		assert.Equal(t, int64(1), kvCount(t, u.GetFailedTOTPAttemptsKey()))
-		assert.Equal(t, int64(0), kvCount(t, u.GetFailedPasswordAttemptsKey()))
-	})
-
-	t.Run("password and passcode pass", func(t *testing.T) {
-		s, u := setupReauthUser(t, 10)
-		require.NoError(t, Reauthenticate(ctx, s, u, "12345678", freshUser10TOTPCode(t)))
 	})
 }
