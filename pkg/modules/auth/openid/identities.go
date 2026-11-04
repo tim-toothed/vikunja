@@ -27,7 +27,7 @@ import (
 )
 
 type LinkedIdentity struct {
-	models.UserIdentity
+	user.Identity
 	ProviderKey  string `json:"provider_key" readOnly:"true" doc:"The key of the configured provider this identity belongs to. Empty when no configured provider matches the issuer anymore."`
 	ProviderName string `json:"provider_name" readOnly:"true" doc:"The display name of the configured provider. Empty when no configured provider matches the issuer anymore."`
 }
@@ -64,7 +64,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 		return nil, err
 	}
 
-	existing, found, err := models.GetUserIdentityByIssuerAndSubject(s, idToken.Issuer, idToken.Subject)
+	existing, found, err := user.GetIdentityByIssuerAndSubject(s, idToken.Issuer, idToken.Subject)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 
 	hasIssuer, err := s.
 		Where("user_id = ? AND issuer = ?", u.ID, idToken.Issuer).
-		Exist(&models.UserIdentity{})
+		Exist(&user.Identity{})
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 		}
 	}
 
-	newIdentity := &models.UserIdentity{
+	newIdentity := &user.Identity{
 		UserID:  u.ID,
 		Issuer:  idToken.Issuer,
 		Subject: idToken.Subject,
@@ -118,7 +118,7 @@ func UnlinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, identity
 
 	deleted, err := s.
 		Where("id = ? AND user_id = ?", identityID, u.ID).
-		Delete(&models.UserIdentity{})
+		Delete(&user.Identity{})
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func UnlinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, identity
 }
 
 func ListIdentities(s *xorm.Session, u *user.User) ([]*LinkedIdentity, error) {
-	identities, err := models.GetUserIdentitiesByUserID(s, u.ID)
+	identities, err := user.GetIdentitiesByUserID(s, u.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +150,8 @@ func ListIdentities(s *xorm.Session, u *user.User) ([]*LinkedIdentity, error) {
 	return linked, nil
 }
 
-func withProvider(identity *models.UserIdentity, provider *Provider) *LinkedIdentity {
-	linked := &LinkedIdentity{UserIdentity: *identity}
+func withProvider(identity *user.Identity, provider *Provider) *LinkedIdentity {
+	linked := &LinkedIdentity{Identity: *identity}
 	if provider != nil {
 		linked.ProviderKey = provider.Key
 		linked.ProviderName = provider.Name
