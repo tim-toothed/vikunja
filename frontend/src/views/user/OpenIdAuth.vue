@@ -70,7 +70,7 @@
 			class="mbs-2"
 			:to="{name: 'user.settings.linked-accounts'}"
 		>
-			{{ $t('user.settings.linkedAccounts.backToSettings') }}
+			{{ $t('user.settings.linkedAccounts.backToLinkedAccounts') }}
 		</XButton>
 
 		<form
