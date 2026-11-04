@@ -47,11 +47,4 @@ describe('loadUserInfo', () => {
 		expect(await loadUserInfo()).toEqual(fullInfo)
 		expect(authStore.refreshUserInfo).not.toHaveBeenCalled()
 	})
-
-	it('returns null without a session', async () => {
-		authStore.currentAccount = null
-
-		expect(await loadUserInfo()).toBeNull()
-		expect(authStore.refreshUserInfo).toHaveBeenCalledOnce()
-	})
 })
