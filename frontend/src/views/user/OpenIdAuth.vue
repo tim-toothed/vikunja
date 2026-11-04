@@ -1,9 +1,8 @@
 <template>
 	<div>
 		<Message
-			v-if="errorMessage"
+			v-if="errorMessage && !linking"
 			variant="danger"
-			:class="{'mbe-4': mode !== 'login'}"
 		>
 			{{ errorMessage }}
 		</Message>
@@ -18,61 +17,14 @@
 			{{ $t('user.auth.authenticating') }}
 		</Message>
 
-		<form
-			v-if="mode === 'link'"
-			@submit.prevent="linkIdentity"
-		>
-			<h2 class="title">
-				{{ $t('user.settings.linkedAccounts.confirmTitle', {provider: providerName}) }}
-			</h2>
-			<p class="mbe-4">
-				{{ $t('user.settings.linkedAccounts.confirmText', {provider: providerName}) }}
-			</p>
-			<FormField
-				id="linkIdentityPassword"
-				v-model="linkPassword"
-				v-focus
-				:label="$t('user.settings.currentPassword')"
-				:placeholder="$t('user.settings.currentPasswordPlaceholder')"
-				autocomplete="current-password"
-				required
-				type="password"
-			/>
-			<FormField
-				v-if="linkNeedsTotp"
-				id="linkIdentityPasscode"
-				v-model="linkTotpPasscode"
-				:label="$t('user.settings.totp.passcode')"
-				:placeholder="$t('user.settings.totp.passcodePlaceholder')"
-				autocomplete="one-time-code"
-				type="text"
-				inputmode="numeric"
-			/>
-			<div class="buttons mbs-4">
-				<XButton
-					type="submit"
-					:loading="linkMutation.isPending.value || linkTotpPending"
-				>
-					{{ $t('user.settings.linkedAccounts.confirm') }}
-				</XButton>
-				<XButton
-					variant="tertiary"
-					:disabled="linkMutation.isPending.value"
-					@click="cancelLinking"
-				>
-					{{ $t('misc.cancel') }}
-				</XButton>
-			</div>
-		</form>
-
-		<XButton
-			v-if="backLink"
-			ref="backButton"
-			class="mbs-2"
-			:to="backLink.to"
-		>
-			{{ backLink.label }}
-		</XButton>
+		<LinkIdentityConfirm
+			v-if="linking"
+			:provider-key="route.params.provider as string"
+			:code="route.query.code as string"
+			:state="queryState"
+			:has-session="authStore.authUser"
+			:initial-error="errorMessage"
+		/>
 
 		<form
 			v-if="needsTotp"
@@ -108,33 +60,23 @@
 
 <script setup lang="ts">
 import type {VikunjaErrorModel} from '@/client/generated'
-import {ref, computed, nextTick, onMounted, watch} from 'vue'
-import {useRoute, useRouter} from 'vue-router'
+import {ref, computed, onMounted} from 'vue'
+import {useRoute} from 'vue-router'
 import {useI18n} from 'vue-i18n'
-import {useQuery} from '@tanstack/vue-query'
 
 import {getErrorText} from '@/message'
 import Message from '@/components/misc/Message.vue'
 import FormField from '@/components/input/FormField.vue'
 import {useRedirectToLastVisited} from '@/composables/useRedirectToLastVisited'
 import {
-	endLinkFlow,
-	getRedirectUrlFromCurrentFrontendPath,
 	isLinkingIdentity,
 	redirectToProvider,
 } from '@/helpers/redirectToProvider'
-import {useLinkIdentityMutation} from '@/client/queries/identities'
-import {totpQuery} from '@/client/queries/totp'
-import {isRequestContextAbort} from '@/client/requestContext'
+import LinkIdentityConfirm from '@/components/user/LinkIdentityConfirm.vue'
 
 import {useAuthStore} from '@/stores/auth'
 import {useConfigStore} from '@/stores/config'
-import {
-	ERROR_CODE_TOO_MANY_REAUTH_ATTEMPTS,
-	ERROR_CODE_TOTP_PASSCODE_USED,
-	ERROR_CODE_TOTP_REQUIRED,
-	ERROR_CODE_WRONG_USERNAME_OR_PASSWORD,
-} from '@/constants/auth'
+import {ERROR_CODE_TOTP_REQUIRED} from '@/constants/auth'
 import type {IProvider} from '@/types/IProvider'
 
 defineOptions({name: 'Auth'})
@@ -156,48 +98,7 @@ const queryState = computed(() => typeof route.query.state === 'string' ? route.
 const needsTotp = ref(false)
 const totpPasscode = ref('')
 
-const router = useRouter()
-const mode = ref<'login' | 'link' | 'linkFailed' | 'noSession'>('login')
-const linkPassword = ref('')
-const linkTotpPasscode = ref('')
-const backButton = ref<{$el: HTMLElement} | null>(null)
-const backLink = computed(() => {
-	if (mode.value === 'linkFailed') {
-		return {
-			to: {name: 'user.settings.linked-accounts'},
-			label: t('user.settings.linkedAccounts.backToLinkedAccounts'),
-		}
-	}
-	if (mode.value === 'noSession') {
-		return {
-			to: {name: 'user.login'},
-			label: t('user.auth.login'),
-		}
-	}
-	return null
-})
-watch(() => backLink.value?.to.name, async name => {
-	if (!name) return
-	await nextTick()
-	backButton.value?.$el.focus()
-})
-const linkMutation = useLinkIdentityMutation()
-const totp = useQuery(computed(() => ({
-	...totpQuery(),
-	enabled: mode.value === 'link' && configStore.totp_enabled,
-})))
-// A missing passcode is rejected and counts toward the lockout, so ask when unsure.
-const linkNeedsTotp = computed(() => totp.data.value?.enabled === true || totp.isError.value)
-const linkTotpPending = computed(() => configStore.totp_enabled && totp.isPending.value)
-const providerName = computed(() => findProvider(route.params.provider as string)?.name ?? route.params.provider)
-
-// Rejected before the code exchange, so the same code still works on retry.
-const RETRYABLE_LINK_ERRORS = new Set([
-	ERROR_CODE_WRONG_USERNAME_OR_PASSWORD,
-	ERROR_CODE_TOTP_REQUIRED,
-	ERROR_CODE_TOTP_PASSCODE_USED,
-	ERROR_CODE_TOO_MANY_REAUTH_ATTEMPTS,
-])
+const linking = ref(false)
 
 function pendingTotpKey(provider: string): string {
 	return `openid_pending_totp_${provider}`
@@ -218,8 +119,7 @@ async function authenticateWithCode() {
 			? route.query.message as string
 			: t('user.auth.openIdGeneralError')
 		if (isLinkingIdentity(queryState.value)) {
-			endLinkFlow(queryState.value)
-			mode.value = authStore.authUser ? 'linkFailed' : 'noSession'
+			linking.value = true
 		}
 		return
 	}
@@ -232,13 +132,7 @@ async function authenticateWithCode() {
 	}
 
 	if (isLinkingIdentity(queryState.value)) {
-		if (!authStore.authUser) {
-			endLinkFlow(queryState.value)
-			errorMessage.value = t('user.settings.linkedAccounts.noSession')
-			mode.value = 'noSession'
-			return
-		}
-		mode.value = 'link'
+		linking.value = true
 		return
 	}
 
@@ -280,45 +174,6 @@ async function submitTotpAndRestart() {
 	sessionStorage.setItem(pendingTotpKey(providerKey), totpPasscode.value)
 	// The auth code is single-use; restart the OIDC flow so the next callback reads the stashed passcode.
 	redirectToProvider(provider)
-}
-
-async function linkIdentity() {
-	if (linkMutation.isPending.value || linkTotpPending.value) return
-
-	const providerKey = route.params.provider as string
-	const provider = findProvider(providerKey)
-	if (!provider) {
-		errorMessage.value = t('user.auth.openIdGeneralError')
-		return
-	}
-
-	errorMessage.value = ''
-	try {
-		await linkMutation.mutateAsync({
-			provider: providerKey,
-			code: route.query.code as string,
-			redirect_url: getRedirectUrlFromCurrentFrontendPath(provider),
-			password: linkPassword.value,
-			totp_passcode: linkNeedsTotp.value ? linkTotpPasscode.value : undefined,
-		})
-	} catch (e) {
-		if (isRequestContextAbort(e)) return
-		errorMessage.value = getErrorText(e)
-		const code = (e as VikunjaErrorModel)?.code
-		if (code === undefined || !RETRYABLE_LINK_ERRORS.has(code)) {
-			endLinkFlow(queryState.value)
-			mode.value = 'linkFailed'
-		}
-		return
-	}
-
-	endLinkFlow(queryState.value)
-	await router.replace({name: 'user.settings.linked-accounts'})
-}
-
-function cancelLinking() {
-	endLinkFlow(queryState.value)
-	router.replace({name: 'user.settings.linked-accounts'})
 }
 
 onMounted(() => authenticateWithCode())
