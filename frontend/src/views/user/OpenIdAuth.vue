@@ -184,6 +184,12 @@ async function authenticateWithCode() {
 		errorMessage.value = typeof route.query.message !== 'undefined'
 			? route.query.message as string
 			: t('user.auth.openIdGeneralError')
+		if (isLinkingIdentity(route.query.state as string)) {
+			leaveLinkMode()
+			if (authStore.authUser) {
+				mode.value = 'linkFailed'
+			}
+		}
 		return
 	}
 
@@ -196,7 +202,7 @@ async function authenticateWithCode() {
 
 	if (isLinkingIdentity(route.query.state as string)) {
 		if (!authStore.authUser) {
-			clearLinkingMarker(route.query.state as string)
+			leaveLinkMode()
 			errorMessage.value = t('user.settings.linkedAccounts.noSession')
 			return
 		}
@@ -268,19 +274,28 @@ async function linkIdentity() {
 		errorMessage.value = getErrorText(e)
 		const code = (e as VikunjaErrorModel)?.code
 		if (code === undefined || !RETRYABLE_LINK_ERRORS.has(code)) {
-			clearLinkingMarker(route.query.state as string)
+			leaveLinkMode()
 			mode.value = 'linkFailed'
 		}
 		return
 	}
 
-	clearLinkingMarker(route.query.state as string)
-	await router.push({name: 'user.settings.linked-accounts'})
+	leaveLinkMode()
+	await router.replace({name: 'user.settings.linked-accounts'})
 }
 
 function cancelLinking() {
-	clearLinkingMarker(route.query.state as string)
-	router.push({name: 'user.settings.linked-accounts'})
+	leaveLinkMode()
+	router.replace({name: 'user.settings.linked-accounts'})
+}
+
+// Consuming the state makes Back or reload on this callback fail the state check instead of logging in with the code.
+function leaveLinkMode() {
+	const state = route.query.state as string
+	clearLinkingMarker(state)
+	if (localStorage.getItem('state') === state) {
+		localStorage.removeItem('state')
+	}
 }
 
 onMounted(() => authenticateWithCode())

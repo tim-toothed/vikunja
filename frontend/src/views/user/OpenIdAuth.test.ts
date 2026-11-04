@@ -14,7 +14,7 @@ const {sdk, mockRoute, router, authStore, redirectIfSaved} = vi.hoisted(() => ({
 		params: {provider: 'dex'} as Record<string, string>,
 		query: {} as Record<string, string>,
 	},
-	router: {push: vi.fn()},
+	router: {push: vi.fn(), replace: vi.fn()},
 	authStore: {
 		authUser: false,
 		isLoading: false,
@@ -148,7 +148,39 @@ describe('OpenIdAuth linking', () => {
 			},
 		})
 		expect(localStorage.getItem('openidLinking')).toBeNull()
-		expect(router.push).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
+		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
+
+		const revisit = mountCallback()
+		await flushPromises()
+
+		expect(authStore.openIdAuth).not.toHaveBeenCalled()
+		expect(revisit.text()).toContain('State does not match')
+	})
+
+	it('does not log in when the callback is revisited after cancelling', async () => {
+		const wrapper = mountCallback()
+		await flushPromises()
+		await wrapper.findAll('x-button-stub')[1].trigger('click')
+
+		expect(localStorage.getItem('openidLinking')).toBeNull()
+		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
+
+		const revisit = mountCallback()
+		await flushPromises()
+
+		expect(authStore.openIdAuth).not.toHaveBeenCalled()
+		expect(revisit.text()).toContain('State does not match')
+	})
+
+	it('offers the way back when the provider reports an error', async () => {
+		mockRoute.query = {error: 'access_denied', state: 'expected-state'}
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(authStore.openIdAuth).not.toHaveBeenCalled()
+		expect(wrapper.text()).toContain('An error occurred while authenticating')
+		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.settings.linked-accounts'})
+		expect(localStorage.getItem('openidLinking')).toBeNull()
 	})
 
 	it('sends the TOTP passcode when TOTP is enabled', async () => {
@@ -174,7 +206,7 @@ describe('OpenIdAuth linking', () => {
 
 		expect(wrapper.text()).toContain('Wrong username or password.')
 		expect(localStorage.getItem('openidLinking')).toBe('expected-state')
-		expect(router.push).not.toHaveBeenCalled()
+		expect(router.replace).not.toHaveBeenCalled()
 
 		await submitLink(wrapper, 'secret')
 
@@ -182,7 +214,7 @@ describe('OpenIdAuth linking', () => {
 		expect(sdk.userIdentitiesLink).toHaveBeenLastCalledWith({
 			body: expect.objectContaining({password: 'secret', code: 'auth-code'}),
 		})
-		expect(router.push).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
+		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
 	})
 
 	it('drops the form once the code was used up', async () => {
