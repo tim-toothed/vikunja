@@ -24,11 +24,12 @@ import (
 )
 
 // varchar, not text: MySQL can't put a unique index on text.
+// Binary collation: OIDC subjects are case-sensitive, MySQL's default collation is not. Ignored elsewhere.
 type userIdentities20261104001459 struct {
 	ID      int64     `xorm:"bigint autoincr not null unique pk"`
 	UserID  int64     `xorm:"bigint not null unique(user_issuer)"`
-	Issuer  string    `xorm:"varchar(250) not null unique(user_issuer) unique(issuer_subject)"`
-	Subject string    `xorm:"varchar(255) not null unique(issuer_subject)"`
+	Issuer  string    `xorm:"varchar(250) not null collate utf8mb4_bin unique(user_issuer) unique(issuer_subject)"`
+	Subject string    `xorm:"varchar(255) not null collate utf8mb4_bin unique(issuer_subject)"`
 	Created time.Time `xorm:"created not null"`
 }
 

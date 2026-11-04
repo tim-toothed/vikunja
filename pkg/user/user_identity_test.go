@@ -49,6 +49,40 @@ func TestGetUserIdentityByIssuerAndSubject(t *testing.T) {
 	})
 }
 
+func TestUserIdentitySubjectIsCaseSensitive(t *testing.T) {
+	db.LoadAndAssertFixtures(t)
+	s := db.NewSession()
+	defer s.Close()
+
+	const issuer = "https://case.service.com"
+	_, err := s.Insert(&UserIdentity{
+		UserID:  1,
+		Issuer:  issuer,
+		Subject: "Alice",
+	})
+	require.NoError(t, err)
+	_, err = s.Insert(&UserIdentity{
+		UserID:  2,
+		Issuer:  issuer,
+		Subject: "alice",
+	})
+	require.NoError(t, err, "subjects differing only in case are distinct identities")
+
+	upper, found, err := GetUserIdentityByIssuerAndSubject(s, issuer, "Alice")
+	require.NoError(t, err)
+	require.True(t, found)
+	assert.Equal(t, int64(1), upper.UserID)
+
+	lower, found, err := GetUserIdentityByIssuerAndSubject(s, issuer, "alice")
+	require.NoError(t, err)
+	require.True(t, found)
+	assert.Equal(t, int64(2), lower.UserID)
+
+	_, found, err = GetUserIdentityByIssuerAndSubject(s, "https://CASE.service.com", "Alice")
+	require.NoError(t, err)
+	assert.False(t, found, "issuers are compared case-sensitively too")
+}
+
 func TestGetUserIdentitiesByUserID(t *testing.T) {
 	t.Run("user with identities", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)

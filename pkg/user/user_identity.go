@@ -26,8 +26,8 @@ import (
 type UserIdentity struct {
 	ID      int64     `xorm:"bigint autoincr not null unique pk" json:"id"`
 	UserID  int64     `xorm:"bigint not null unique(user_issuer)" json:"-"`
-	Issuer  string    `xorm:"varchar(250) not null unique(user_issuer) unique(issuer_subject)" json:"issuer"`
-	Subject string    `xorm:"varchar(255) not null unique(issuer_subject)" json:"-"`
+	Issuer  string    `xorm:"varchar(250) not null collate utf8mb4_bin unique(user_issuer) unique(issuer_subject)" json:"issuer"`
+	Subject string    `xorm:"varchar(255) not null collate utf8mb4_bin unique(issuer_subject)" json:"-"`
 	Created time.Time `xorm:"created not null" json:"created"`
 }
 
