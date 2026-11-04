@@ -292,14 +292,6 @@ describe('OpenIdAuth linking', () => {
 		expect(wrapper.find('x-button-stub[type="submit"]').attributes('loading')).toBe('false')
 	})
 
-	it('does not submit an empty password', async () => {
-		const wrapper = mountCallback()
-		await flushPromises()
-		await submitLink(wrapper, '')
-
-		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
-	})
-
 	it.each([
 		[1011, 'Wrong username or password.'],
 		[1017, 'The TOTP passcode is invalid.'],

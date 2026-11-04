@@ -282,7 +282,7 @@ async function submitTotpAndRestart() {
 }
 
 async function linkIdentity() {
-	if (linkMutation.isPending.value || linkTotpPending.value || !linkPassword.value) return
+	if (linkMutation.isPending.value || linkTotpPending.value) return
 
 	const providerKey = route.params.provider as string
 	const provider = findProvider(providerKey)
