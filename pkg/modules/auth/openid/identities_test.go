@@ -28,6 +28,7 @@ import (
 	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"xorm.io/builder"
 )
 
 const identityTestPassword = "12345678"
@@ -264,12 +265,8 @@ func TestLinkIdentity(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, first.ID, second.ID)
-		s := db.NewSession()
-		defer s.Close()
-		count, err := s.Where("user_id = ?", u.ID).Count(&models.UserIdentity{})
-		require.NoError(t, err)
-		assert.Equal(t, int64(1), count)
 		assert.Equal(t, mockIDPProviderKey, second.ProviderKey)
+		db.AssertCount(t, "user_identities", builder.Eq{"user_id": u.ID}, 1)
 	})
 }
 
@@ -398,6 +395,7 @@ func TestListIdentities(t *testing.T) {
 	})
 	t.Run("only lists the user's own identities", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)
+		newMockIDP(t).configure(t)
 
 		s := db.NewSession()
 		defer s.Close()
