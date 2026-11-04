@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, it, expect} from 'vitest'
 
-import {clearLinkingMarker, getAutoRedirectProvider, isLinkingIdentity, redirectToProvider} from './redirectToProvider'
+import {endLinkFlow, getAutoRedirectProvider, isLinkingIdentity, redirectToProvider} from './redirectToProvider'
 import type {IProvider} from '@/types/IProvider'
 
 const provider = {key: 'authentik', name: 'Authentik'} as IProvider
@@ -87,7 +87,6 @@ describe('redirectToProvider', () => {
 		redirectToProvider(fullProvider)
 
 		expect(isLinkingIdentity(linkState)).toBe(false)
-		expect(isLinkingIdentity(localStorage.getItem('state')!)).toBe(false)
 	})
 
 	it('is not in link mode for a different state', () => {
@@ -102,14 +101,25 @@ describe('redirectToProvider', () => {
 		expect(isLinkingIdentity(undefined)).toBe(false)
 	})
 
-	it('only clears the marker of its own flow', () => {
+	it('only ends its own flow', () => {
 		redirectToProvider(fullProvider, {linking: true})
 		const linkState = localStorage.getItem('state')!
 
-		clearLinkingMarker('other-state')
+		endLinkFlow('other-state')
+		endLinkFlow('')
+		endLinkFlow(null)
 		expect(isLinkingIdentity(linkState)).toBe(true)
+		expect(localStorage.getItem('state')).toBe(linkState)
 
-		clearLinkingMarker(linkState)
+		endLinkFlow(linkState)
 		expect(isLinkingIdentity(linkState)).toBe(false)
+		expect(localStorage.getItem('state')).toBeNull()
+
+		redirectToProvider(fullProvider, {linking: true})
+		const staleState = localStorage.getItem('state')!
+		localStorage.setItem('state', 'other-flow')
+		endLinkFlow(staleState)
+		expect(isLinkingIdentity(staleState)).toBe(false)
+		expect(localStorage.getItem('state')).toBe('other-flow')
 	})
 })

@@ -127,7 +127,7 @@ import Message from '@/components/misc/Message.vue'
 import FormField from '@/components/input/FormField.vue'
 import {useRedirectToLastVisited} from '@/composables/useRedirectToLastVisited'
 import {
-	clearLinkingMarker,
+	endLinkFlow,
 	getRedirectUrlFromCurrentFrontendPath,
 	isLinkingIdentity,
 	redirectToProvider,
@@ -212,7 +212,7 @@ async function authenticateWithCode() {
 			? route.query.message as string
 			: t('user.auth.openIdGeneralError')
 		if (isLinkingIdentity(queryState.value)) {
-			leaveLinkMode()
+			endLinkFlow(queryState.value)
 			if (authStore.authUser) {
 				mode.value = 'linkFailed'
 			}
@@ -229,7 +229,7 @@ async function authenticateWithCode() {
 
 	if (isLinkingIdentity(queryState.value)) {
 		if (!authStore.authUser) {
-			leaveLinkMode()
+			endLinkFlow(queryState.value)
 			errorMessage.value = t('user.settings.linkedAccounts.noSession')
 			mode.value = 'noSession'
 			return
@@ -302,28 +302,19 @@ async function linkIdentity() {
 		errorMessage.value = getErrorText(e)
 		const code = (e as VikunjaErrorModel)?.code
 		if (code === undefined || !RETRYABLE_LINK_ERRORS.has(code)) {
-			leaveLinkMode()
+			endLinkFlow(queryState.value)
 			mode.value = 'linkFailed'
 		}
 		return
 	}
 
-	leaveLinkMode()
+	endLinkFlow(queryState.value)
 	await router.replace({name: 'user.settings.linked-accounts'})
 }
 
 function cancelLinking() {
-	leaveLinkMode()
+	endLinkFlow(queryState.value)
 	router.replace({name: 'user.settings.linked-accounts'})
-}
-
-// Consumed so Back or reload fails the state check instead of logging in with the code.
-function leaveLinkMode() {
-	const state = queryState.value
-	clearLinkingMarker(state)
-	if (state !== '' && localStorage.getItem('state') === state) {
-		localStorage.removeItem('state')
-	}
 }
 
 onMounted(() => authenticateWithCode())

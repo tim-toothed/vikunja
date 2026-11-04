@@ -13,14 +13,24 @@ export function getRedirectUrlFromCurrentFrontendPath(provider: IProvider): stri
 
 const LINKING_KEY = 'openidLinking'
 
-export function isLinkingIdentity(state: unknown): boolean {
-	return typeof state === 'string' && state !== '' && localStorage.getItem(LINKING_KEY) === state
+function isNonEmptyString(state: unknown): state is string {
+	return typeof state === 'string' && state !== ''
 }
 
-// Only drop our own marker so another tab's pending link survives.
-export function clearLinkingMarker(state: unknown) {
-	if (isLinkingIdentity(state)) {
-		localStorage.removeItem(LINKING_KEY)
+export function isLinkingIdentity(state: unknown): boolean {
+	return isNonEmptyString(state) && localStorage.getItem(LINKING_KEY) === state
+}
+
+// Consumed so Back or reload fails the state check instead of reusing the code.
+// Only our own flow's entries go, so another tab's pending flow survives.
+export function endLinkFlow(state: unknown) {
+	if (!isNonEmptyString(state)) {
+		return
+	}
+	for (const key of [LINKING_KEY, 'state']) {
+		if (localStorage.getItem(key) === state) {
+			localStorage.removeItem(key)
+		}
 	}
 }
 
