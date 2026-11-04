@@ -11,7 +11,7 @@ import type {LinkedIdentity} from '@/client/generated'
 import {formatDisplayDate} from '@/helpers/time/formatDate'
 import {redirectToProvider} from '@/helpers/redirectToProvider'
 import ErrorMessage from '@/components/misc/Error.vue'
-import FormField from '@/components/input/FormField.vue'
+import ReauthFields from '@/components/user/ReauthFields.vue'
 import type {IProvider} from '@/types/IProvider'
 
 defineOptions({name: 'UserSettingsLinkedAccounts'})
@@ -168,28 +168,14 @@ async function unlink() {
 				<p class="mbe-4">
 					{{ $t('user.settings.linkedAccounts.unlinkText') }}
 				</p>
-				<!-- autofocus, not v-focus: showModal() moves focus after mount but honours autofocus -->
-				<FormField
-					id="unlinkIdentityPassword"
-					v-model="password"
+				<ReauthFields
+					v-model:password="password"
+					v-model:passcode="totpPasscode"
+					password-id="unlinkIdentityPassword"
+					passcode-id="unlinkIdentityPasscode"
+					:show-passcode="unlinkNeedsTotp"
 					autofocus
-					:label="$t('user.settings.currentPassword')"
-					:placeholder="$t('user.settings.currentPasswordPlaceholder')"
-					autocomplete="current-password"
-					required
-					type="password"
-					@keyup.enter="unlink()"
-				/>
-				<FormField
-					v-if="unlinkNeedsTotp"
-					id="unlinkIdentityPasscode"
-					v-model="totpPasscode"
-					:label="$t('user.settings.totp.passcode')"
-					:placeholder="$t('user.settings.totp.passcodePlaceholder')"
-					autocomplete="one-time-code"
-					type="text"
-					inputmode="numeric"
-					@keyup.enter="unlink()"
+					@submit="unlink()"
 				/>
 
 				<template #footer>

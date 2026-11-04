@@ -17,25 +17,13 @@
 			<p class="mbe-4">
 				{{ $t('user.settings.linkedAccounts.confirmText', {provider: providerName}) }}
 			</p>
-			<FormField
-				id="linkIdentityPassword"
-				v-model="password"
-				v-focus
-				:label="$t('user.settings.currentPassword')"
-				:placeholder="$t('user.settings.currentPasswordPlaceholder')"
-				autocomplete="current-password"
-				required
-				type="password"
-			/>
-			<FormField
-				v-if="needsTotp"
-				id="linkIdentityPasscode"
-				v-model="totpPasscode"
-				:label="$t('user.settings.totp.passcode')"
-				:placeholder="$t('user.settings.totp.passcodePlaceholder')"
-				autocomplete="one-time-code"
-				type="text"
-				inputmode="numeric"
+			<ReauthFields
+				v-model:password="password"
+				v-model:passcode="totpPasscode"
+				password-id="linkIdentityPassword"
+				passcode-id="linkIdentityPasscode"
+				:show-passcode="needsTotp"
+				focus
 			/>
 			<div class="buttons mbs-4">
 				<XButton
@@ -74,7 +62,7 @@ import type {VikunjaErrorModel} from '@/client/generated'
 import {useLinkIdentityMutation} from '@/client/queries/identities'
 import {totpQuery} from '@/client/queries/totp'
 import {isRequestContextAbort} from '@/client/requestContext'
-import FormField from '@/components/input/FormField.vue'
+import ReauthFields from '@/components/user/ReauthFields.vue'
 import Message from '@/components/misc/Message.vue'
 import {getErrorText} from '@/message'
 import {endLinkFlow, getRedirectUrlFromCurrentFrontendPath} from '@/helpers/redirectToProvider'
