@@ -14,7 +14,10 @@ const {sdk, mockRoute, router, authStore, redirectIfSaved} = vi.hoisted(() => ({
 		params: {provider: 'dex'} as Record<string, string>,
 		query: {} as Record<string, string | null>,
 	},
-	router: {push: vi.fn(), replace: vi.fn()},
+	router: {
+		push: vi.fn(),
+		replace: vi.fn(),
+	},
 	authStore: {
 		authUser: false,
 		isLoading: false,
@@ -58,10 +61,18 @@ vi.mock('@/composables/useRedirectToLastVisited', () => ({
 
 const i18n = createI18n({legacy: false, locale: 'en', messages: {en}})
 
+const REDIRECT_URL = 'http://localhost:3000/auth/openid/dex'
+
+const queryClientConfig = {
+	defaultOptions: {
+		queries: {retry: false},
+	},
+}
+
 function mountCallback() {
 	return mount(OpenIdAuth, {
 		global: {
-			plugins: [i18n, [VueQueryPlugin, {queryClient: new QueryClient({defaultOptions: {queries: {retry: false}}})}]],
+			plugins: [i18n, [VueQueryPlugin, {queryClient: new QueryClient(queryClientConfig)}]],
 			stubs: {XButton: true},
 			directives: {focus: {}},
 		},
@@ -162,6 +173,16 @@ describe('OpenIdAuth linking', () => {
 		await flushPromises()
 		await submitLink(wrapper, 'secret')
 
+		expect(sdk.userIdentitiesLink).toHaveBeenCalledWith({
+			body: {
+				provider: 'dex',
+				code: 'auth-code',
+				redirect_url: REDIRECT_URL,
+				password: 'secret',
+				totp_passcode: undefined,
+			},
+		})
+		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
 		expect(localStorage.getItem('openidLinking')).toBeNull()
 
 		const revisit = mountCallback()
@@ -174,7 +195,7 @@ describe('OpenIdAuth linking', () => {
 	it('does not log in when the callback is revisited after cancelling', async () => {
 		const wrapper = mountCallback()
 		await flushPromises()
-		await wrapper.findAll('x-button-stub')[1].trigger('click')
+		await wrapper.find('x-button-stub[variant="tertiary"]').trigger('click')
 
 		expect(localStorage.getItem('openidLinking')).toBeNull()
 		expect(router.replace).toHaveBeenCalledWith({name: 'user.settings.linked-accounts'})
@@ -195,6 +216,7 @@ describe('OpenIdAuth linking', () => {
 		expect(wrapper.text()).toContain('An error occurred while authenticating')
 		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.settings.linked-accounts'})
 		expect(localStorage.getItem('openidLinking')).toBeNull()
+		expect(localStorage.getItem('state')).toBeNull()
 	})
 
 	it('offers the login when the provider reports an error without a session', async () => {
@@ -228,7 +250,7 @@ describe('OpenIdAuth linking', () => {
 		const wrapper = mountCallback()
 		await flushPromises()
 
-		expect(wrapper.findAll('x-button-stub')[0].attributes('loading')).toBe('true')
+		expect(wrapper.find('x-button-stub[type="submit"]').attributes('loading')).toBe('true')
 		await submitLink(wrapper, 'secret')
 		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
 	})
@@ -239,7 +261,7 @@ describe('OpenIdAuth linking', () => {
 		await flushPromises()
 
 		expect(wrapper.find('#linkIdentityPasscode').exists()).toBe(true)
-		expect(wrapper.findAll('x-button-stub')[0].attributes('loading')).toBe('false')
+		expect(wrapper.find('x-button-stub[type="submit"]').attributes('loading')).toBe('false')
 	})
 
 	it('does not submit an empty password', async () => {
@@ -251,10 +273,15 @@ describe('OpenIdAuth linking', () => {
 	})
 
 	it.each([
+		[1011, 'Wrong username or password.'],
 		[1017, 'The TOTP passcode is invalid.'],
+		[1039, 'This TOTP passcode has already been used.'],
 		[1041, 'Too many failed attempts.'],
 	])('keeps the form for a retry after error %i', async (code, message) => {
-		sdk.userIdentitiesLink.mockRejectedValueOnce({status: 403, code})
+		sdk.userIdentitiesLink.mockRejectedValueOnce({
+			status: 403,
+			code,
+		})
 		const wrapper = mountCallback()
 		await flushPromises()
 		await submitLink(wrapper, 'secret')
@@ -262,6 +289,7 @@ describe('OpenIdAuth linking', () => {
 		expect(wrapper.find('form').exists()).toBe(true)
 		expect(wrapper.text()).toContain(message)
 		expect(localStorage.getItem('openidLinking')).toBe('expected-state')
+		expect(localStorage.getItem('state')).toBe('expected-state')
 		expect(router.replace).not.toHaveBeenCalled()
 	})
 
@@ -277,7 +305,10 @@ describe('OpenIdAuth linking', () => {
 	})
 
 	it('drops the form once the code was used up', async () => {
-		sdk.userIdentitiesLink.mockRejectedValue({status: 409, code: 15002})
+		sdk.userIdentitiesLink.mockRejectedValue({
+			status: 409,
+			code: 15002,
+		})
 		const wrapper = mountCallback()
 		await flushPromises()
 		await submitLink(wrapper, 'secret')

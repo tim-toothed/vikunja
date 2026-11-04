@@ -12,7 +12,10 @@ const sdk = vi.hoisted(() => ({
 	userIdentitiesLink: vi.fn(),
 	userIdentitiesUnlink: vi.fn(),
 }))
-const message = vi.hoisted(() => ({success: vi.fn(), error: vi.fn()}))
+const message = vi.hoisted(() => ({
+	success: vi.fn(),
+	error: vi.fn(),
+}))
 vi.mock('@/client/generated', () => sdk)
 vi.mock('@/message', () => message)
 
@@ -35,7 +38,15 @@ beforeEach(() => {
 
 it('unwraps the identity list', async () => {
 	const client = new QueryClient()
-	sdk.userIdentitiesList.mockResolvedValue({data: {items: [dex], total: 1, page: 1, per_page: 50, total_pages: 1}})
+	sdk.userIdentitiesList.mockResolvedValue({
+		data: {
+			items: [dex],
+			total: 1,
+			page: 1,
+			per_page: 50,
+			total_pages: 1,
+		},
+	})
 	expect(await client.fetchQuery(identitiesQuery())).toEqual([dex])
 })
 
@@ -47,14 +58,20 @@ it('treats a missing identity list as empty', async () => {
 
 it('does not toast a failed link', async () => {
 	const client = new QueryClient()
-	sdk.userIdentitiesLink.mockRejectedValue({status: 403, code: 1011})
+	sdk.userIdentitiesLink.mockRejectedValue({
+		status: 403,
+		code: 1011,
+	})
 
 	await expect(client.getMutationCache().build(client, linkIdentityMutationOptions()).execute({
 		provider: 'dex',
 		code: 'code',
 		redirect_url: 'url',
 		password: 'wrong',
-	})).rejects.toEqual({status: 403, code: 1011})
+	})).rejects.toEqual({
+		status: 403,
+		code: 1011,
+	})
 
 	expect(message.error).not.toHaveBeenCalled()
 })

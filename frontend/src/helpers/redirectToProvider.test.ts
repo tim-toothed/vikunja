@@ -3,7 +3,10 @@ import {afterEach, beforeEach, describe, it, expect} from 'vitest'
 import {endLinkFlow, getAutoRedirectProvider, isLinkingIdentity, redirectToProvider} from './redirectToProvider'
 import type {IProvider} from '@/types/IProvider'
 
-const provider = {key: 'authentik', name: 'Authentik'} as IProvider
+const provider = {
+	key: 'authentik',
+	name: 'Authentik',
+} as IProvider
 
 const soleProviderContext = {
 	localAuthEnabled: false,
@@ -40,7 +43,13 @@ describe('getAutoRedirectProvider', () => {
 	it('does not redirect when there is a choice of providers', () => {
 		expect(getAutoRedirectProvider({
 			...soleProviderContext,
-			providers: [provider, {key: 'other', name: 'Other'} as IProvider],
+			providers: [
+				provider,
+				{
+					key: 'other',
+					name: 'Other',
+				} as IProvider,
+			],
 		})).toBeUndefined()
 	})
 
