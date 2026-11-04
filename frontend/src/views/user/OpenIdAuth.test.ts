@@ -61,7 +61,7 @@ const i18n = createI18n({legacy: false, locale: 'en', messages: {en}})
 function mountCallback() {
 	return mount(OpenIdAuth, {
 		global: {
-			plugins: [i18n, [VueQueryPlugin, {queryClient: new QueryClient()}]],
+			plugins: [i18n, [VueQueryPlugin, {queryClient: new QueryClient({defaultOptions: {queries: {retry: false}}})}]],
 			stubs: {XButton: true},
 			directives: {focus: {}},
 		},
@@ -196,6 +196,33 @@ describe('OpenIdAuth linking', () => {
 				totp_passcode: '123456',
 			}),
 		})
+	})
+
+	it('disables the submit button while the TOTP status is loading', async () => {
+		sdk.totpGet.mockReturnValue(new Promise(() => {}))
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.findAll('x-button-stub')[0].attributes('disabled')).toBe('true')
+		await submitLink(wrapper, 'secret')
+		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
+	})
+
+	it('asks for the TOTP passcode when the TOTP status cannot be loaded', async () => {
+		sdk.totpGet.mockRejectedValue({status: 500})
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.find('#linkIdentityPasscode').exists()).toBe(true)
+		expect(wrapper.findAll('x-button-stub')[0].attributes('disabled')).toBe('false')
+	})
+
+	it('does not submit an empty password', async () => {
+		const wrapper = mountCallback()
+		await flushPromises()
+		await submitLink(wrapper, '')
+
+		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
 	})
 
 	it('keeps the form for a retry after a wrong password', async () => {

@@ -35,6 +35,7 @@
 				:label="$t('user.settings.currentPassword')"
 				:placeholder="$t('user.settings.currentPasswordPlaceholder')"
 				autocomplete="current-password"
+				required
 				type="password"
 			/>
 			<FormField
@@ -51,6 +52,7 @@
 				<XButton
 					type="submit"
 					:loading="linkMutation.isPending.value"
+					:disabled="linkTotpPending"
 				>
 					{{ $t('user.settings.linkedAccounts.confirm') }}
 				</XButton>
@@ -155,7 +157,9 @@ const totp = useQuery(computed(() => ({
 	...totpQuery(),
 	enabled: mode.value === 'link' && configStore.totp_enabled,
 })))
-const linkNeedsTotp = computed(() => totp.data.value?.enabled === true)
+// Fail towards asking for a passcode: a missing one is rejected by the backend and counts toward the lockout.
+const linkNeedsTotp = computed(() => totp.data.value?.enabled === true || totp.isError.value)
+const linkTotpPending = computed(() => configStore.totp_enabled && totp.isPending.value)
 const providerName = computed(() => findProvider(route.params.provider as string)?.name ?? route.params.provider)
 
 // Rejected before the code exchange, so the same code still works on retry.
@@ -251,7 +255,7 @@ async function submitTotpAndRestart() {
 }
 
 async function linkIdentity() {
-	if (linkMutation.isPending.value) return
+	if (linkMutation.isPending.value || linkTotpPending.value || !linkPassword.value) return
 
 	const providerKey = route.params.provider as string
 	const provider = findProvider(providerKey)

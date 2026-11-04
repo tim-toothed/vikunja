@@ -59,7 +59,7 @@ function closeUnlink() {
 
 async function unlink() {
 	const identity = identityToUnlink.value
-	if (unlinkMutation.isPending.value || !identity?.id) return
+	if (unlinkMutation.isPending.value || !identity?.id || !password.value) return
 	try {
 		await unlinkMutation.mutateAsync({
 			id: identity.id,
@@ -157,6 +157,7 @@ async function unlink() {
 					:label="$t('user.settings.currentPassword')"
 					:placeholder="$t('user.settings.currentPasswordPlaceholder')"
 					autocomplete="current-password"
+					required
 					type="password"
 					@keyup.enter="unlink()"
 				/>
