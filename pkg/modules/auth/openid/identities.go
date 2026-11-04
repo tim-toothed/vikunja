@@ -40,28 +40,10 @@ type LinkIdentityRequest struct {
 	TOTPPasscode string `json:"totp_passcode,omitempty" doc:"A current totp passcode. Required when the user has totp enabled."`
 }
 
-// Both checks count toward the account lockout. Rolls s back on failure.
-func reauthenticate(ctx context.Context, s *xorm.Session, u *user.User, password, passcode string) error {
-	err := user.ThrottleReauth(u.ID, func() error {
-		if err := user.CheckUserPasswordCountingFailures(ctx, s, u, password); err != nil {
-			return err
-		}
-		return enforceTOTPIfRequired(s, u, passcode)
-	})
-	if err != nil {
-		// Rolled back first: HandleFailedTOTPAuth needs its own write lock on SQLite.
-		_ = s.Rollback()
-		if passcode != "" && user.IsErrInvalidTOTPPasscode(err) {
-			user.HandleFailedTOTPAuth(u)
-		}
-	}
-	return err
-}
-
 // An identity already linked to u is returned unchanged.
 func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkIdentityRequest) (*LinkedIdentity, error) {
 	// Before the exchange: the code is single-use, so a typo must not burn it.
-	if err := reauthenticate(ctx, s, u, req.Password, req.TOTPPasscode); err != nil {
+	if err := user.Reauthenticate(ctx, s, u, req.Password, req.TOTPPasscode); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +112,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 
 // Another user's identity is reported as nonexistent.
 func UnlinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, identityID int64, password, passcode string) error {
-	if err := reauthenticate(ctx, s, u, password, passcode); err != nil {
+	if err := user.Reauthenticate(ctx, s, u, password, passcode); err != nil {
 		return err
 	}
 
