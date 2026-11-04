@@ -73,12 +73,18 @@ describe('redirectToProvider', () => {
 		localStorage.clear()
 		Object.defineProperty(window, 'location', {
 			configurable: true,
-			value: {...originalLocation, href: 'http://localhost/user/settings/linked-accounts'},
+			value: {
+				...originalLocation,
+				href: 'http://localhost/user/settings/linked-accounts',
+			},
 		})
 	})
 
 	afterEach(() => {
-		Object.defineProperty(window, 'location', {configurable: true, value: originalLocation})
+		Object.defineProperty(window, 'location', {
+			configurable: true,
+			value: originalLocation,
+		})
 	})
 
 	it('uses the login redirect uri when linking', () => {
@@ -110,24 +116,35 @@ describe('redirectToProvider', () => {
 		expect(isLinkingIdentity(undefined)).toBe(false)
 	})
 
-	it('only ends its own flow', () => {
+	it('ignores a foreign, empty or missing state when ending a flow', () => {
 		redirectToProvider(fullProvider, {linking: true})
 		const linkState = localStorage.getItem('state')!
 
 		endLinkFlow('other-state')
 		endLinkFlow('')
 		endLinkFlow(null)
+
 		expect(isLinkingIdentity(linkState)).toBe(true)
 		expect(localStorage.getItem('state')).toBe(linkState)
+	})
+
+	it('consumes the marker and state of its own flow', () => {
+		redirectToProvider(fullProvider, {linking: true})
+		const linkState = localStorage.getItem('state')!
 
 		endLinkFlow(linkState)
+
 		expect(isLinkingIdentity(linkState)).toBe(false)
 		expect(localStorage.getItem('state')).toBeNull()
+	})
 
+	it('consumes a stale marker without touching a newer state', () => {
 		redirectToProvider(fullProvider, {linking: true})
 		const staleState = localStorage.getItem('state')!
 		localStorage.setItem('state', 'other-flow')
+
 		endLinkFlow(staleState)
+
 		expect(isLinkingIdentity(staleState)).toBe(false)
 		expect(localStorage.getItem('state')).toBe('other-flow')
 	})

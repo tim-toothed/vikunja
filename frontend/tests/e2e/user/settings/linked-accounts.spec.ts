@@ -24,7 +24,11 @@ async function listIdentities(apiContext: APIRequestContext, token: string) {
 }
 
 test.describe('Linked accounts', () => {
-	test('links a Dex account after confirming the password', async ({authenticatedPage: page, apiContext, userToken}) => {
+	test('links a Dex account after confirming the password', async ({
+		authenticatedPage: page,
+		apiContext,
+		userToken,
+	}) => {
 		await gotoUserSettings(page, 'linked-accounts')
 		await expect(page.getByText('You have not linked any accounts yet.')).toBeVisible()
 
@@ -42,7 +46,11 @@ test.describe('Linked accounts', () => {
 		expect(identities[0].provider_key).toBe('dex')
 	})
 
-	test('keeps the confirmation form after a wrong password', async ({authenticatedPage: page, apiContext, userToken}) => {
+	test('keeps the confirmation form after a wrong password', async ({
+		authenticatedPage: page,
+		apiContext,
+		userToken,
+	}) => {
 		await gotoUserSettings(page, 'linked-accounts')
 		await linkDexAccount(page)
 
@@ -58,7 +66,12 @@ test.describe('Linked accounts', () => {
 		expect(await listIdentities(apiContext, userToken)).toHaveLength(1)
 	})
 
-	test('unlinks an identity of a removed provider', async ({authenticatedPage: page, apiContext, currentUser, userToken}) => {
+	test('unlinks an identity of a removed provider', async ({
+		authenticatedPage: page,
+		apiContext,
+		currentUser,
+		userToken,
+	}) => {
 		await UserIdentityFactory.create(1, {user_id: currentUser.id})
 		await gotoUserSettings(page, 'linked-accounts')
 

@@ -59,7 +59,11 @@ vi.mock('@/composables/useRedirectToLastVisited', () => ({
 	useRedirectToLastVisited: () => ({redirectIfSaved}),
 }))
 
-const i18n = createI18n({legacy: false, locale: 'en', messages: {en}})
+const i18n = createI18n({
+	legacy: false,
+	locale: 'en',
+	messages: {en},
+})
 
 const REDIRECT_URL = 'http://localhost:3000/auth/openid/dex'
 
@@ -84,7 +88,10 @@ beforeEach(() => {
 	localStorage.clear()
 	sessionStorage.clear()
 	localStorage.setItem('state', 'expected-state')
-	mockRoute.query = {code: 'auth-code', state: 'expected-state'}
+	mockRoute.query = {
+		code: 'auth-code',
+		state: 'expected-state',
+	}
 	authStore.authUser = false
 	authStore.openIdAuth.mockResolvedValue(undefined)
 	sdk.totpGet.mockResolvedValue({data: {enabled: false}})
@@ -92,7 +99,10 @@ beforeEach(() => {
 
 describe('OpenIdAuth login', () => {
 	it('refuses a callback whose state does not match', async () => {
-		mockRoute.query = {code: 'auth-code', state: 'forged'}
+		mockRoute.query = {
+			code: 'auth-code',
+			state: 'forged',
+		}
 		const wrapper = mountCallback()
 		await flushPromises()
 
@@ -103,7 +113,10 @@ describe('OpenIdAuth login', () => {
 	it.each([false, true])('refuses a bare state when none is stored (logged in: %s)', async loggedIn => {
 		localStorage.clear()
 		authStore.authUser = loggedIn
-		mockRoute.query = {code: 'x', state: null}
+		mockRoute.query = {
+			code: 'x',
+			state: null,
+		}
 		const wrapper = mountCallback()
 		await flushPromises()
 
@@ -116,7 +129,10 @@ describe('OpenIdAuth login', () => {
 	it('does not enter link mode on a provider error with a bare state', async () => {
 		localStorage.clear()
 		authStore.authUser = true
-		mockRoute.query = {error: 'access_denied', state: null}
+		mockRoute.query = {
+			error: 'access_denied',
+			state: null,
+		}
 		const wrapper = mountCallback()
 		await flushPromises()
 
@@ -150,7 +166,12 @@ describe('OpenIdAuth linking', () => {
 	beforeEach(() => {
 		localStorage.setItem('openidLinking', 'expected-state')
 		authStore.authUser = true
-		sdk.userIdentitiesLink.mockResolvedValue({data: {id: 1, provider_key: 'dex'}})
+		sdk.userIdentitiesLink.mockResolvedValue({
+			data: {
+				id: 1,
+				provider_key: 'dex',
+			},
+		})
 	})
 
 	async function submitLink(wrapper: ReturnType<typeof mountCallback>, password: string) {
@@ -208,7 +229,10 @@ describe('OpenIdAuth linking', () => {
 	})
 
 	it('offers the way back when the provider reports an error', async () => {
-		mockRoute.query = {error: 'access_denied', state: 'expected-state'}
+		mockRoute.query = {
+			error: 'access_denied',
+			state: 'expected-state',
+		}
 		const wrapper = mountCallback()
 		await flushPromises()
 
@@ -221,13 +245,17 @@ describe('OpenIdAuth linking', () => {
 
 	it('offers the login when the provider reports an error without a session', async () => {
 		authStore.authUser = false
-		mockRoute.query = {error: 'access_denied', state: 'expected-state'}
+		mockRoute.query = {
+			error: 'access_denied',
+			state: 'expected-state',
+		}
 		const wrapper = mountCallback()
 		await flushPromises()
 
 		expect(wrapper.text()).toContain('An error occurred while authenticating')
 		expect(wrapper.getComponent({name: 'XButton'}).vm.$attrs.to).toEqual({name: 'user.login'})
 		expect(localStorage.getItem('openidLinking')).toBeNull()
+		expect(localStorage.getItem('state')).toBeNull()
 	})
 
 	it('sends the TOTP passcode when TOTP is enabled', async () => {
@@ -342,7 +370,10 @@ describe('OpenIdAuth linking', () => {
 	})
 
 	it('checks the state before entering link mode', async () => {
-		mockRoute.query = {code: 'auth-code', state: 'forged'}
+		mockRoute.query = {
+			code: 'auth-code',
+			state: 'forged',
+		}
 		const wrapper = mountCallback()
 		await flushPromises()
 
