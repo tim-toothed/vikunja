@@ -18,7 +18,6 @@ package openid
 
 import (
 	"context"
-	"fmt"
 
 	"code.vikunja.io/api/pkg/models"
 	"code.vikunja.io/api/pkg/user"
@@ -75,9 +74,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 		return withProvider(existing, provider), nil
 	}
 
-	ownedByOIDCUser, err := s.
-		Where("issuer = ? AND subject = ?", idToken.Issuer, idToken.Subject).
-		Exist(&user.User{})
+	ownedByOIDCUser, err := user.OIDCUserExists(s, idToken.Issuer, idToken.Subject)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +82,7 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 		return nil, &models.ErrUserIdentityLinkedToOtherUser{Issuer: idToken.Issuer}
 	}
 
-	hasIssuer, err := s.
-		Where("user_id = ? AND issuer = ?", u.ID, idToken.Issuer).
-		Exist(&user.Identity{})
+	hasIssuer, err := user.HasIdentityForIssuer(s, u.ID, idToken.Issuer)
 	if err != nil {
 		return nil, err
 	}
@@ -98,13 +93,9 @@ func LinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, req *LinkI
 		}
 	}
 
-	newIdentity := &user.Identity{
-		UserID:  u.ID,
-		Issuer:  idToken.Issuer,
-		Subject: idToken.Subject,
-	}
-	if _, err := s.Insert(newIdentity); err != nil {
-		return nil, fmt.Errorf("inserting user identity: %w", err)
+	newIdentity, err := user.CreateIdentity(s, u.ID, idToken.Issuer, idToken.Subject)
+	if err != nil {
+		return nil, err
 	}
 
 	return withProvider(newIdentity, provider), nil
@@ -116,13 +107,11 @@ func UnlinkIdentity(ctx context.Context, s *xorm.Session, u *user.User, identity
 		return err
 	}
 
-	deleted, err := s.
-		Where("id = ? AND user_id = ?", identityID, u.ID).
-		Delete(&user.Identity{})
+	deleted, err := user.DeleteIdentity(s, u.ID, identityID)
 	if err != nil {
 		return err
 	}
-	if deleted == 0 {
+	if !deleted {
 		return &models.ErrUserIdentityDoesNotExist{ID: identityID}
 	}
 	return nil

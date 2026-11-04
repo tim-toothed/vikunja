@@ -17,6 +17,7 @@
 package user
 
 import (
+	"fmt"
 	"time"
 
 	"xorm.io/xorm"
@@ -52,4 +53,37 @@ func GetIdentitiesByUserID(s *xorm.Session, userID int64) (identities []*Identit
 	identities = []*Identity{}
 	err = s.Where("user_id = ?", userID).OrderBy("id ASC").Find(&identities)
 	return identities, err
+}
+
+func HasIdentityForIssuer(s *xorm.Session, userID int64, issuer string) (bool, error) {
+	return s.
+		Where("user_id = ? AND issuer = ?", userID, issuer).
+		Exist(&Identity{})
+}
+
+func CreateIdentity(s *xorm.Session, userID int64, issuer, subject string) (*Identity, error) {
+	identity := &Identity{
+		UserID:  userID,
+		Issuer:  issuer,
+		Subject: subject,
+	}
+	if _, err := s.Insert(identity); err != nil {
+		return nil, fmt.Errorf("inserting user identity: %w", err)
+	}
+	return identity, nil
+}
+
+// Only deletes userID's own identity.
+func DeleteIdentity(s *xorm.Session, userID, identityID int64) (deleted bool, err error) {
+	n, err := s.
+		Where("id = ? AND user_id = ?", identityID, userID).
+		Delete(&Identity{})
+	return n > 0, err
+}
+
+// OIDCUserExists reports whether issuer and subject belong to a user created through OpenID.
+func OIDCUserExists(s *xorm.Session, issuer, subject string) (bool, error) {
+	return s.
+		Where("issuer = ? AND subject = ?", issuer, subject).
+		Exist(&User{})
 }
