@@ -158,8 +158,9 @@ const router = createRouter({
 					name: 'user.settings.totp',
 					component: () => import('@/views/user/settings/TOTP.vue'),
 					beforeEnter: async () => {
+						const info = await loadUserInfo()
 						const {useConfigStore} = await import('@/stores/config')
-						if (!useConfigStore().totp_enabled || !useAuthStore().info?.is_local_user) {
+						if (!useConfigStore().totp_enabled || !info?.is_local_user) {
 							return {name: 'user.settings.general'}
 						}
 					},
