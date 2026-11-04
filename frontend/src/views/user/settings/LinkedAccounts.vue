@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, ref} from 'vue'
+import {computed, nextTick, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {useQuery} from '@tanstack/vue-query'
 
@@ -42,6 +42,8 @@ const identityToUnlink = ref<LinkedIdentity | null>(null)
 const unlinkTitle = computed(() => identityToUnlink.value
 	? t('user.settings.linkedAccounts.unlinkHeader', {provider: identityName(identityToUnlink.value)})
 	: '')
+const description = ref<HTMLElement | null>(null)
+const linkButtons = ref<HTMLElement | null>(null)
 const password = ref('')
 const totpPasscode = ref('')
 
@@ -67,7 +69,12 @@ async function unlink() {
 			totp_passcode: totpEnabled.value ? totpPasscode.value : undefined,
 		})
 	} catch { return }
-	if (identityToUnlink.value === identity) closeUnlink()
+	if (identityToUnlink.value === identity) {
+		closeUnlink()
+		await nextTick()
+		const target = linkButtons.value?.querySelector<HTMLElement>('button, a') ?? description.value
+		target?.focus()
+	}
 }
 </script>
 
@@ -76,7 +83,11 @@ async function unlink() {
 		:title="$t('user.settings.linkedAccounts.title')"
 		:loading="identityQuery.isPending.value"
 	>
-		<p class="mbe-4">
+		<p
+			ref="description"
+			tabindex="-1"
+			class="mbe-4"
+		>
 			{{ $t('user.settings.linkedAccounts.description') }}
 		</p>
 
@@ -106,6 +117,7 @@ async function unlink() {
 						<td class="has-text-end">
 							<XButton
 								variant="secondary"
+								:aria-label="$t('user.settings.linkedAccounts.unlinkHeader', {provider: identityName(identity)})"
 								@click="openUnlink(identity)"
 							>
 								{{ $t('user.settings.linkedAccounts.unlink') }}
@@ -125,6 +137,7 @@ async function unlink() {
 
 		<div
 			v-if="identityQuery.isSuccess.value && unlinkedProviders.length > 0"
+			ref="linkButtons"
 			class="link-buttons"
 		>
 			<XButton
@@ -153,7 +166,7 @@ async function unlink() {
 				<FormField
 					id="unlinkIdentityPassword"
 					v-model="password"
-					v-focus
+					autofocus
 					:label="$t('user.settings.currentPassword')"
 					:placeholder="$t('user.settings.currentPasswordPlaceholder')"
 					autocomplete="current-password"

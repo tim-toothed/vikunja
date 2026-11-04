@@ -67,6 +67,7 @@
 
 		<XButton
 			v-if="mode === 'linkFailed'"
+			ref="backButton"
 			class="mbs-2"
 			:to="{name: 'user.settings.linked-accounts'}"
 		>
@@ -107,7 +108,7 @@
 
 <script setup lang="ts">
 import type {VikunjaErrorModel} from '@/client/generated'
-import {ref, computed, onMounted} from 'vue'
+import {ref, computed, nextTick, onMounted, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {useQuery} from '@tanstack/vue-query'
@@ -157,6 +158,12 @@ const router = useRouter()
 const mode = ref<'login' | 'link' | 'linkFailed'>('login')
 const linkPassword = ref('')
 const linkTotpPasscode = ref('')
+const backButton = ref<{$el: HTMLElement} | null>(null)
+watch(mode, async newMode => {
+	if (newMode !== 'linkFailed') return
+	await nextTick()
+	backButton.value?.$el.focus()
+})
 const linkMutation = useLinkIdentityMutation()
 const totp = useQuery(computed(() => ({
 	...totpQuery(),
