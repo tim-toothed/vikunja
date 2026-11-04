@@ -128,7 +128,12 @@ import {isRequestContextAbort} from '@/client/requestContext'
 
 import {useAuthStore} from '@/stores/auth'
 import {useConfigStore} from '@/stores/config'
-import {ERROR_CODE_TOTP_REQUIRED} from '@/constants/auth'
+import {
+	ERROR_CODE_TOO_MANY_REAUTH_ATTEMPTS,
+	ERROR_CODE_TOTP_PASSCODE_USED,
+	ERROR_CODE_TOTP_REQUIRED,
+	ERROR_CODE_WRONG_USERNAME_OR_PASSWORD,
+} from '@/constants/auth'
 import type {IProvider} from '@/types/IProvider'
 
 defineOptions({name: 'Auth'})
@@ -164,10 +169,10 @@ const providerName = computed(() => findProvider(route.params.provider as string
 
 // Rejected before the code exchange, so the same code still works on retry.
 const RETRYABLE_LINK_ERRORS = new Set([
-	1011, // wrong password
-	1017, // missing or wrong TOTP passcode
-	1039, // TOTP passcode reused
-	1041, // too many attempts
+	ERROR_CODE_WRONG_USERNAME_OR_PASSWORD,
+	ERROR_CODE_TOTP_REQUIRED,
+	ERROR_CODE_TOTP_PASSCODE_USED,
+	ERROR_CODE_TOO_MANY_REAUTH_ATTEMPTS,
 ])
 
 function pendingTotpKey(provider: string): string {
