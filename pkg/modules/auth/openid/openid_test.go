@@ -647,7 +647,7 @@ func TestGetOrCreateUser(t *testing.T) {
 		s := db.NewSession()
 		defer s.Close()
 
-		_, err := s.Insert(&models.UserIdentity{
+		_, err := s.Insert(&user.UserIdentity{
 			UserID:  9999,
 			Issuer:  "https://some.service.com",
 			Subject: "linked-orphan",

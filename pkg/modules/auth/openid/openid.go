@@ -447,7 +447,7 @@ func fallbackSearchUsers(cl *claims, provider *Provider, idToken *oidc.IDToken) 
 
 // Disabled or locked users are returned without error so the caller refuses the login.
 func getLinkedUser(s *xorm.Session, idToken *oidc.IDToken) (*user.User, bool, error) {
-	identity, found, err := models.GetUserIdentityByIssuerAndSubject(s, idToken.Issuer, idToken.Subject)
+	identity, found, err := user.GetUserIdentityByIssuerAndSubject(s, idToken.Issuer, idToken.Subject)
 	if err != nil || !found {
 		return nil, false, err
 	}

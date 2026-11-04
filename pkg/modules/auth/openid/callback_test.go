@@ -32,7 +32,6 @@ import (
 
 	"code.vikunja.io/api/pkg/config"
 	"code.vikunja.io/api/pkg/db"
-	"code.vikunja.io/api/pkg/models"
 	"code.vikunja.io/api/pkg/modules/avatar"
 	"code.vikunja.io/api/pkg/modules/keyvalue"
 	"code.vikunja.io/api/pkg/user"
@@ -364,7 +363,7 @@ func linkIdentity(t *testing.T, userID int64, issuer, subject string) {
 	t.Helper()
 	s := db.NewSession()
 	defer s.Close()
-	_, err := s.Insert(&models.UserIdentity{
+	_, err := s.Insert(&user.UserIdentity{
 		UserID:  userID,
 		Issuer:  issuer,
 		Subject: subject,
