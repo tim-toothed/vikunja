@@ -57,6 +57,7 @@
 				</XButton>
 				<XButton
 					variant="tertiary"
+					:disabled="linkMutation.isPending.value"
 					@click="cancelLinking"
 				>
 					{{ $t('misc.cancel') }}
@@ -316,7 +317,6 @@ async function linkIdentity() {
 }
 
 function cancelLinking() {
-	if (linkMutation.isPending.value) return
 	endLinkFlow(queryState.value)
 	router.replace({name: 'user.settings.linked-accounts'})
 }
