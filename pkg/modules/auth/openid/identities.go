@@ -152,21 +152,15 @@ func ListIdentities(s *xorm.Session, u *user.User) ([]*LinkedIdentity, error) {
 		return nil, err
 	}
 
+	if len(identities) == 0 {
+		return []*LinkedIdentity{}, nil
+	}
+
 	providers, err := GetAllProviders()
 	if err != nil {
 		return nil, err
 	}
-
-	byIssuer := make(map[string]*Provider, len(providers))
-	for _, provider := range providers {
-		issuer, err := provider.Issuer()
-		if err != nil {
-			continue
-		}
-		if _, exists := byIssuer[issuer]; !exists {
-			byIssuer[issuer] = provider
-		}
-	}
+	byIssuer := providersByIssuer(providers)
 
 	linked := make([]*LinkedIdentity, 0, len(identities))
 	for _, identity := range identities {
