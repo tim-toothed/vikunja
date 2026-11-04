@@ -199,3 +199,10 @@ func TestTaskChildWrites_TaskMovedToForbiddenProject(t *testing.T) {
 		})
 	}
 }
+
+// User 1 only reads project 3, which holds task 32.
+func grantUser1WriteOnProject3(t *testing.T, s *xorm.Session) {
+	t.Helper()
+	_, err := s.Where("user_id = ? AND project_id = ?", 1, 3).Cols("permission").Update(&ProjectUser{Permission: PermissionWrite})
+	require.NoError(t, err)
+}
