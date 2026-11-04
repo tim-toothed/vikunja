@@ -13,12 +13,12 @@ export function getRedirectUrlFromCurrentFrontendPath(provider: IProvider): stri
 
 const LINKING_KEY = 'openidLinking'
 
-export function isLinkingIdentity(state: string): boolean {
-	return state !== '' && localStorage.getItem(LINKING_KEY) === state
+export function isLinkingIdentity(state: unknown): boolean {
+	return typeof state === 'string' && state !== '' && localStorage.getItem(LINKING_KEY) === state
 }
 
 // Only drop our own marker so another tab's pending link survives.
-export function clearLinkingMarker(state: string) {
+export function clearLinkingMarker(state: unknown) {
 	if (isLinkingIdentity(state)) {
 		localStorage.removeItem(LINKING_KEY)
 	}

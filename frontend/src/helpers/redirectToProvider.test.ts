@@ -97,6 +97,11 @@ describe('redirectToProvider', () => {
 		expect(isLinkingIdentity('')).toBe(false)
 	})
 
+	it('is not in link mode for a missing state without a marker', () => {
+		expect(isLinkingIdentity(null)).toBe(false)
+		expect(isLinkingIdentity(undefined)).toBe(false)
+	})
+
 	it('only clears the marker of its own flow', () => {
 		redirectToProvider(fullProvider, {linking: true})
 		const linkState = localStorage.getItem('state')!

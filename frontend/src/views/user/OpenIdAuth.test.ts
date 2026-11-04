@@ -12,7 +12,7 @@ const {sdk, mockRoute, router, authStore, redirectIfSaved} = vi.hoisted(() => ({
 	},
 	mockRoute: {
 		params: {provider: 'dex'} as Record<string, string>,
-		query: {} as Record<string, string>,
+		query: {} as Record<string, string | null>,
 	},
 	router: {push: vi.fn(), replace: vi.fn()},
 	authStore: {
@@ -87,6 +87,30 @@ describe('OpenIdAuth login', () => {
 
 		expect(authStore.openIdAuth).not.toHaveBeenCalled()
 		expect(wrapper.text()).toContain('State does not match')
+	})
+
+	it.each([false, true])('refuses a bare state when none is stored (logged in: %s)', async loggedIn => {
+		localStorage.clear()
+		authStore.authUser = loggedIn
+		mockRoute.query = {code: 'x', state: null}
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.text()).toContain('State does not match')
+		expect(wrapper.find('#linkIdentityPassword').exists()).toBe(false)
+		expect(authStore.openIdAuth).not.toHaveBeenCalled()
+		expect(sdk.userIdentitiesLink).not.toHaveBeenCalled()
+	})
+
+	it('does not enter link mode on a provider error with a bare state', async () => {
+		localStorage.clear()
+		authStore.authUser = true
+		mockRoute.query = {error: 'access_denied', state: null}
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(wrapper.text()).toContain('An error occurred while authenticating')
+		expect(wrapper.findComponent({name: 'XButton'}).exists()).toBe(false)
 	})
 
 	it('logs in with the code', async () => {

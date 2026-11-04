@@ -159,6 +159,8 @@ const configStore = useConfigStore()
 const loading = computed(() => authStore.isLoading)
 const errorMessage = ref('')
 const errorMessageFromQuery = computed(() => route.query.error)
+// vue-router parses a bare `?state` as null.
+const queryState = computed(() => typeof route.query.state === 'string' ? route.query.state : '')
 
 const needsTotp = ref(false)
 const totpPasscode = ref('')
@@ -209,7 +211,7 @@ async function authenticateWithCode() {
 		errorMessage.value = typeof route.query.message !== 'undefined'
 			? route.query.message as string
 			: t('user.auth.openIdGeneralError')
-		if (isLinkingIdentity(route.query.state as string)) {
+		if (isLinkingIdentity(queryState.value)) {
 			leaveLinkMode()
 			if (authStore.authUser) {
 				mode.value = 'linkFailed'
@@ -218,14 +220,14 @@ async function authenticateWithCode() {
 		return
 	}
 
-	const state = localStorage.getItem('state')
-	if (typeof route.query.state === 'undefined' || route.query.state !== state) {
+	const storedState = localStorage.getItem('state')
+	if (!storedState || queryState.value !== storedState) {
 		sessionStorage.removeItem(pendingTotpKey(providerKey))
 		errorMessage.value = t('user.auth.openIdStateError')
 		return
 	}
 
-	if (isLinkingIdentity(route.query.state as string)) {
+	if (isLinkingIdentity(queryState.value)) {
 		if (!authStore.authUser) {
 			leaveLinkMode()
 			errorMessage.value = t('user.settings.linkedAccounts.noSession')
@@ -317,9 +319,9 @@ function cancelLinking() {
 
 // Consumed so Back or reload fails the state check instead of logging in with the code.
 function leaveLinkMode() {
-	const state = route.query.state as string
+	const state = queryState.value
 	clearLinkingMarker(state)
-	if (localStorage.getItem('state') === state) {
+	if (state !== '' && localStorage.getItem('state') === state) {
 		localStorage.removeItem('state')
 	}
 }
