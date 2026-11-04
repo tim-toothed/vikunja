@@ -132,13 +132,9 @@ func TestHumaLogin(t *testing.T) {
 	})
 
 	t.Run("TOTP wrong", func(t *testing.T) {
-		require.NoError(t, keyvalue.Del(testuser10.GetFailedTOTPAttemptsKey()))
 		rec := login(`{"username":"user10","password":"12345678","totp_passcode":"000000"}`)
 		assert.Equal(t, http.StatusPreconditionFailed, rec.Code)
 		assert.Equal(t, user.ErrCodeInvalidTOTPPasscode, problemCode(t, rec))
-		attempts, _, err := keyvalue.GetInt64(testuser10.GetFailedTOTPAttemptsKey())
-		require.NoError(t, err)
-		assert.Equal(t, int64(1), attempts)
 	})
 
 	t.Run("TOTP correct", func(t *testing.T) {

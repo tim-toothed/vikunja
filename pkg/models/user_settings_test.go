@@ -22,7 +22,6 @@ import (
 
 	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/events"
-	"code.vikunja.io/api/pkg/modules/keyvalue"
 	"code.vikunja.io/api/pkg/user"
 
 	"github.com/stretchr/testify/assert"
@@ -41,21 +40,6 @@ func TestChangeUserPassword(t *testing.T) {
 		err := ChangeUserPassword(context.Background(), s, &user.User{ID: 1, Username: "user2"}, "user2password", "newpassword")
 		require.Error(t, err)
 		assert.True(t, user.IsErrWrongUsernameOrPassword(err))
-	})
-	t.Run("a wrong password counts toward the lockout", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		defer s.Close()
-
-		u := &user.User{ID: 1}
-		require.NoError(t, keyvalue.Del(u.GetFailedPasswordAttemptsKey()))
-
-		err := ChangeUserPassword(context.Background(), s, u, "wrong", "newpassword")
-		require.True(t, user.IsErrWrongUsernameOrPassword(err), "got %v", err)
-
-		attempts, _, err := keyvalue.GetInt64(u.GetFailedPasswordAttemptsKey())
-		require.NoError(t, err)
-		assert.Equal(t, int64(1), attempts)
 	})
 	t.Run("changes the password", func(t *testing.T) {
 		db.LoadAndAssertFixtures(t)

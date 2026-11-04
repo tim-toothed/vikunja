@@ -143,6 +143,9 @@ func TestHumaTOTP(t *testing.T) {
 			`{"password":"12345678"}`, humaTokenFor(t, &testuser10), "")
 		require.Equal(t, http.StatusPreconditionFailed, rec.Code, "body: %s", rec.Body.String())
 		db.AssertExists(t, "totp", map[string]interface{}{"user_id": 10, "enabled": true}, false)
+		_, counted, err := keyvalue.Get(testuser10.GetFailedTOTPAttemptsKey())
+		require.NoError(t, err)
+		assert.False(t, counted, "a missing passcode must not count toward the totp lockout")
 	})
 
 	t.Run("Disable with a wrong passcode is refused and counted", func(t *testing.T) {

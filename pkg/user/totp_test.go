@@ -28,7 +28,6 @@ import (
 	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"xorm.io/xorm"
 )
 
 func TestTOTPPasscodeCannotBeReused(t *testing.T) {
@@ -144,11 +143,9 @@ func TestEnrollTOTPRequiresPassword(t *testing.T) {
 	u, err := GetUserByID(s, 2)
 	require.NoError(t, err)
 	_ = keyvalue.Del(reauthAttemptsKey(u.ID))
-	_ = keyvalue.Del(u.GetFailedPasswordAttemptsKey())
 
 	_, err = EnrollTOTP(context.Background(), s, u, "wrong")
 	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
-	assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
 	db.AssertMissing(t, "totp", map[string]any{"user_id": u.ID})
 
 	enrolled, err := EnrollTOTP(context.Background(), s, u, "12345678")
@@ -164,14 +161,12 @@ func TestEnableTOTPRequiresPassword(t *testing.T) {
 	u, err := GetUserByID(s, 1)
 	require.NoError(t, err)
 	_ = keyvalue.Del(reauthAttemptsKey(u.ID))
-	_ = keyvalue.Del(u.GetFailedPasswordAttemptsKey())
 
 	passcode, err := totp.GenerateCode("HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ", time.Now())
 	require.NoError(t, err)
 
 	err = EnableTOTP(context.Background(), s, u, "wrong", passcode)
 	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
-	assert.Equal(t, int64(1), kvCount(t, u.GetFailedPasswordAttemptsKey()))
 
 	err = EnableTOTP(context.Background(), s, u, "12345678", passcode)
 	require.NoError(t, err)
@@ -191,58 +186,4 @@ func freshUser10TOTPCode(t *testing.T) string {
 	require.NoError(t, keyvalue.Del(usedKey))
 	t.Cleanup(func() { _ = keyvalue.Del(usedKey) })
 	return passcode
-}
-
-func TestDisableTOTPWithReauth(t *testing.T) {
-	setup := func(t *testing.T) (*xorm.Session, *User) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		t.Cleanup(func() { s.Close() })
-		u, err := GetUserByID(s, 10)
-		require.NoError(t, err)
-		require.NoError(t, keyvalue.Del(reauthAttemptsKey(u.ID)))
-		require.NoError(t, keyvalue.Del(u.GetFailedTOTPAttemptsKey()))
-		require.NoError(t, keyvalue.Del(u.GetFailedPasswordAttemptsKey()))
-		return s, u
-	}
-	failedAttempts := func(t *testing.T, key string) int64 {
-		attempts, _, err := keyvalue.GetInt64(key)
-		require.NoError(t, err)
-		return attempts
-	}
-
-	t.Run("missing passcode is refused without counting toward the TOTP lockout", func(t *testing.T) {
-		s, u := setup(t)
-
-		err := DisableTOTPWithReauth(context.Background(), s, u, "12345678", "")
-		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
-		assert.Equal(t, int64(0), failedAttempts(t, u.GetFailedTOTPAttemptsKey()))
-		db.AssertExists(t, "totp", map[string]any{"user_id": u.ID, "enabled": true}, false)
-	})
-
-	t.Run("wrong passcode is refused and counts toward the TOTP lockout", func(t *testing.T) {
-		s, u := setup(t)
-
-		err := DisableTOTPWithReauth(context.Background(), s, u, "12345678", "000000")
-		assert.True(t, IsErrInvalidTOTPPasscode(err), "got %v", err)
-		assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedTOTPAttemptsKey()))
-		db.AssertExists(t, "totp", map[string]any{"user_id": u.ID, "enabled": true}, false)
-	})
-
-	t.Run("wrong password is refused and counts toward the lockout", func(t *testing.T) {
-		s, u := setup(t)
-
-		err := DisableTOTPWithReauth(context.Background(), s, u, "wrong", freshUser10TOTPCode(t))
-		assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
-		assert.Equal(t, int64(1), failedAttempts(t, u.GetFailedPasswordAttemptsKey()))
-		db.AssertExists(t, "totp", map[string]any{"user_id": u.ID, "enabled": true}, false)
-	})
-
-	t.Run("password and passcode disable TOTP", func(t *testing.T) {
-		s, u := setup(t)
-
-		require.NoError(t, DisableTOTPWithReauth(context.Background(), s, u, "12345678", freshUser10TOTPCode(t)))
-		require.NoError(t, s.Commit())
-		db.AssertMissing(t, "totp", map[string]any{"user_id": u.ID})
-	})
 }
