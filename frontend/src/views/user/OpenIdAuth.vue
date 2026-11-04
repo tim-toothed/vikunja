@@ -66,21 +66,12 @@
 		</form>
 
 		<XButton
-			v-if="mode === 'linkFailed'"
+			v-if="backLink"
 			ref="backButton"
 			class="mbs-2"
-			:to="{name: 'user.settings.linked-accounts'}"
+			:to="backLink.to"
 		>
-			{{ $t('user.settings.linkedAccounts.backToLinkedAccounts') }}
-		</XButton>
-
-		<XButton
-			v-if="mode === 'noSession'"
-			ref="backButton"
-			class="mbs-2"
-			:to="{name: 'user.login'}"
-		>
-			{{ $t('user.auth.login') }}
+			{{ backLink.label }}
 		</XButton>
 
 		<form
@@ -170,8 +161,17 @@ const mode = ref<'login' | 'link' | 'linkFailed' | 'noSession'>('login')
 const linkPassword = ref('')
 const linkTotpPasscode = ref('')
 const backButton = ref<{$el: HTMLElement} | null>(null)
-watch(mode, async newMode => {
-	if (newMode !== 'linkFailed' && newMode !== 'noSession') return
+const backLink = computed(() => {
+	if (mode.value === 'linkFailed') {
+		return {to: {name: 'user.settings.linked-accounts'}, label: t('user.settings.linkedAccounts.backToLinkedAccounts')}
+	}
+	if (mode.value === 'noSession') {
+		return {to: {name: 'user.login'}, label: t('user.auth.login')}
+	}
+	return null
+})
+watch(backLink, async link => {
+	if (!link) return
 	await nextTick()
 	backButton.value?.$el.focus()
 })
