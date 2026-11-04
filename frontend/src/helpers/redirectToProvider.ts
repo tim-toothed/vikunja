@@ -21,8 +21,7 @@ export function isLinkingIdentity(state: unknown): boolean {
 	return isNonEmptyString(state) && localStorage.getItem(LINKING_KEY) === state
 }
 
-// Consumed so Back or reload fails the state check instead of reusing the code.
-// Only our own flow's entries go, so another tab's pending flow survives.
+// Consumes only this flow's entries: Back/reload then fails the state check, other tabs' flows survive.
 export function endLinkFlow(state: unknown) {
 	if (!isNonEmptyString(state)) {
 		return

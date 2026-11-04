@@ -164,6 +164,7 @@ async function unlink() {
 				<p class="mbe-4">
 					{{ $t('user.settings.linkedAccounts.unlinkText') }}
 				</p>
+				<!-- autofocus, not v-focus: showModal() moves focus after mount but honours autofocus -->
 				<FormField
 					id="unlinkIdentityPassword"
 					v-model="password"
