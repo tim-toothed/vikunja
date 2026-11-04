@@ -1574,6 +1574,15 @@ func projectWebhooksForEvent(s *xorm.Session, projectID int64, eventName string)
 		if !exists || creator.Status != user.StatusActive {
 			continue
 		}
+		if w.ProjectID != projectID {
+			canRead, _, err := parents[w.ProjectID].CanRead(s, creator)
+			if err != nil {
+				return nil, err
+			}
+			if !canRead {
+				continue
+			}
+		}
 		// project.deleted fires after the row is gone; nothing left to check against.
 		if project != nil {
 			// Backstop for access lost through a path that skipped the cleanup.
