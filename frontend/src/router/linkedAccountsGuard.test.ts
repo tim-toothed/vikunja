@@ -4,7 +4,7 @@ const {authStore, baseStore, configStore} = vi.hoisted(() => {
 	const authStore = {
 		authUser: true,
 		authLinkShare: false,
-		info: {id: 1, username: 'user1'} as Record<string, unknown> | null,
+		currentAccount: {id: 1, username: 'user1', is_local_user: true} as Record<string, unknown> | null,
 		checkAuth: vi.fn(async () => {}),
 		refreshUserInfo: vi.fn(async () => {}),
 		verifyEmail: vi.fn(),
@@ -35,15 +35,15 @@ async function navigateToLinkedAccounts() {
 
 describe('linked accounts route guard', () => {
 	beforeEach(() => {
-		authStore.info = {id: 1, username: 'user1', is_local_user: true}
+		authStore.currentAccount = {id: 1, username: 'user1', is_local_user: true}
 		authStore.refreshUserInfo.mockReset()
 		configStore.auth.openid_connect = {enabled: true, providers: [{key: 'dex', name: 'Dex'}]}
 	})
 
 	it('fetches /user when only the JWT fallback is loaded', async () => {
-		authStore.info = {id: 1, username: 'user1'}
+		authStore.currentAccount = null
 		authStore.refreshUserInfo.mockImplementation(async () => {
-			authStore.info = {id: 1, username: 'user1', is_local_user: true}
+			authStore.currentAccount = {id: 1, username: 'user1', is_local_user: true}
 		})
 
 		expect(await navigateToLinkedAccounts()).toBe('user.settings.linked-accounts')
@@ -51,7 +51,7 @@ describe('linked accounts route guard', () => {
 	})
 
 	it('sends non-local users to the general settings', async () => {
-		authStore.info = {id: 1, username: 'user1', is_local_user: false}
+		authStore.currentAccount = {id: 1, username: 'user1', is_local_user: false}
 
 		expect(await navigateToLinkedAccounts()).toBe('user.settings.general')
 	})
