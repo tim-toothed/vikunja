@@ -113,7 +113,7 @@ describe('OpenIdAuth login', () => {
 
 describe('OpenIdAuth linking', () => {
 	beforeEach(() => {
-		localStorage.setItem('openidLinking', 'true')
+		localStorage.setItem('openidLinking', 'expected-state')
 		authStore.authUser = true
 		sdk.userIdentitiesLink.mockResolvedValue({data: {id: 1, provider_key: 'dex'}})
 	})
@@ -173,7 +173,7 @@ describe('OpenIdAuth linking', () => {
 		await submitLink(wrapper, 'wrong')
 
 		expect(wrapper.text()).toContain('Wrong username or password.')
-		expect(localStorage.getItem('openidLinking')).toBe('true')
+		expect(localStorage.getItem('openidLinking')).toBe('expected-state')
 		expect(router.push).not.toHaveBeenCalled()
 
 		await submitLink(wrapper, 'secret')
@@ -206,6 +206,16 @@ describe('OpenIdAuth linking', () => {
 		expect(wrapper.find('form').exists()).toBe(false)
 		expect(wrapper.text()).toContain('You need to be logged in to link an account.')
 		expect(localStorage.getItem('openidLinking')).toBeNull()
+	})
+
+	it('logs in when the marker belongs to another flow', async () => {
+		localStorage.setItem('openidLinking', 'other-state')
+		const wrapper = mountCallback()
+		await flushPromises()
+
+		expect(authStore.openIdAuth).toHaveBeenCalled()
+		expect(wrapper.find('#linkIdentityPassword').exists()).toBe(false)
+		expect(localStorage.getItem('openidLinking')).toBe('other-state')
 	})
 
 	it('checks the state before entering link mode', async () => {

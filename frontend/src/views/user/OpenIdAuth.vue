@@ -194,9 +194,9 @@ async function authenticateWithCode() {
 		return
 	}
 
-	if (isLinkingIdentity()) {
+	if (isLinkingIdentity(route.query.state as string)) {
 		if (!authStore.authUser) {
-			clearLinkingMarker()
+			clearLinkingMarker(route.query.state as string)
 			errorMessage.value = t('user.settings.linkedAccounts.noSession')
 			return
 		}
@@ -268,18 +268,18 @@ async function linkIdentity() {
 		errorMessage.value = getErrorText(e)
 		const code = (e as VikunjaErrorModel)?.code
 		if (code === undefined || !RETRYABLE_LINK_ERRORS.has(code)) {
-			clearLinkingMarker()
+			clearLinkingMarker(route.query.state as string)
 			mode.value = 'linkFailed'
 		}
 		return
 	}
 
-	clearLinkingMarker()
+	clearLinkingMarker(route.query.state as string)
 	await router.push({name: 'user.settings.linked-accounts'})
 }
 
 function cancelLinking() {
-	clearLinkingMarker()
+	clearLinkingMarker(route.query.state as string)
 	router.push({name: 'user.settings.linked-accounts'})
 }
 

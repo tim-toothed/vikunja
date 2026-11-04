@@ -13,12 +13,15 @@ export function getRedirectUrlFromCurrentFrontendPath(provider: IProvider): stri
 
 const LINKING_KEY = 'openidLinking'
 
-export function isLinkingIdentity(): boolean {
-	return localStorage.getItem(LINKING_KEY) !== null
+export function isLinkingIdentity(state: string): boolean {
+	return state !== '' && localStorage.getItem(LINKING_KEY) === state
 }
 
-export function clearLinkingMarker() {
-	localStorage.removeItem(LINKING_KEY)
+// Only drop our own marker so another tab's pending link survives.
+export function clearLinkingMarker(state: string) {
+	if (isLinkingIdentity(state)) {
+		localStorage.removeItem(LINKING_KEY)
+	}
 }
 
 // Linking reuses the login redirect URI so admins don't have to register a second one at the provider.
@@ -28,9 +31,9 @@ export const redirectToProvider = (provider: IProvider, {linking = false}: {link
 	const state = createRandomID(24)
 	localStorage.setItem('state', state)
 	if (linking) {
-		localStorage.setItem(LINKING_KEY, 'true')
+		localStorage.setItem(LINKING_KEY, state)
 	} else {
-		clearLinkingMarker()
+		localStorage.removeItem(LINKING_KEY)
 	}
 
 	window.location.href = `${provider.auth_url}?client_id=${provider.client_id}&redirect_uri=${redirectUrl}&response_type=code&scope=${provider.scope}&state=${state}`

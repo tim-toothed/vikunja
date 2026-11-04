@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, it, expect} from 'vitest'
 
-import {getAutoRedirectProvider, isLinkingIdentity, redirectToProvider} from './redirectToProvider'
+import {clearLinkingMarker, getAutoRedirectProvider, isLinkingIdentity, redirectToProvider} from './redirectToProvider'
 import type {IProvider} from '@/types/IProvider'
 
 const provider = {key: 'authentik', name: 'Authentik'} as IProvider
@@ -75,7 +75,7 @@ describe('redirectToProvider', () => {
 	it('uses the login redirect uri when linking', () => {
 		redirectToProvider(fullProvider, {linking: true})
 
-		expect(isLinkingIdentity()).toBe(true)
+		expect(isLinkingIdentity(localStorage.getItem('state')!)).toBe(true)
 		const url = new URL(window.location.href)
 		expect(url.searchParams.get('redirect_uri')).toBe('http://localhost/auth/openid/authentik')
 		expect(url.searchParams.get('state')).toBe(localStorage.getItem('state'))
@@ -83,8 +83,28 @@ describe('redirectToProvider', () => {
 
 	it('drops a stale linking marker on a login redirect', () => {
 		redirectToProvider(fullProvider, {linking: true})
+		const linkState = localStorage.getItem('state')!
 		redirectToProvider(fullProvider)
 
-		expect(isLinkingIdentity()).toBe(false)
+		expect(isLinkingIdentity(linkState)).toBe(false)
+		expect(isLinkingIdentity(localStorage.getItem('state')!)).toBe(false)
+	})
+
+	it('is not in link mode for a different state', () => {
+		redirectToProvider(fullProvider, {linking: true})
+
+		expect(isLinkingIdentity('other-state')).toBe(false)
+		expect(isLinkingIdentity('')).toBe(false)
+	})
+
+	it('only clears the marker of its own flow', () => {
+		redirectToProvider(fullProvider, {linking: true})
+		const linkState = localStorage.getItem('state')!
+
+		clearLinkingMarker('other-state')
+		expect(isLinkingIdentity(linkState)).toBe(true)
+
+		clearLinkingMarker(linkState)
+		expect(isLinkingIdentity(linkState)).toBe(false)
 	})
 })
