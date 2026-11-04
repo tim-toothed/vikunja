@@ -4,7 +4,6 @@ export function canLinkAccounts(
 	openidConnect: ConfigState['auth']['openid_connect'],
 	info: {is_local_user?: boolean} | null | undefined,
 ): boolean {
-	return openidConnect.enabled
-		&& openidConnect.providers.length > 0
+	return openidConnect.providers.length > 0
 		&& info?.is_local_user === true
 }

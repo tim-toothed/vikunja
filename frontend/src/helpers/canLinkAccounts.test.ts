@@ -10,10 +10,6 @@ describe('canLinkAccounts', () => {
 		expect(canLinkAccounts({enabled: true, providers: [provider]}, local)).toBe(true)
 	})
 
-	it('needs OpenID enabled', () => {
-		expect(canLinkAccounts({enabled: false, providers: [provider]}, local)).toBe(false)
-	})
-
 	it('needs a provider', () => {
 		expect(canLinkAccounts({enabled: true, providers: []}, local)).toBe(false)
 	})
