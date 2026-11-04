@@ -48,7 +48,6 @@ func loadIdentityTestUser(t *testing.T, id int64) *user.User {
 	return u
 }
 
-// Own secret: user 10's fixture TOTP and the linked-login test's would collide on "passcode already used".
 func enableTestTOTP(t *testing.T, userID int64) {
 	t.Helper()
 	s := db.NewSession()
