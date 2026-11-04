@@ -146,6 +146,7 @@ func TestEnrollTOTPRequiresPassword(t *testing.T) {
 
 	_, err = EnrollTOTP(context.Background(), s, u, "wrong")
 	assert.True(t, IsErrWrongUsernameOrPassword(err), "got %v", err)
+	assert.Equal(t, int64(1), kvCount(t, reauthAttemptsKey(u.ID)))
 	db.AssertMissing(t, "totp", map[string]any{"user_id": u.ID})
 
 	enrolled, err := EnrollTOTP(context.Background(), s, u, "12345678")
